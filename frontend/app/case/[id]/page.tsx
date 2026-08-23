@@ -31,7 +31,8 @@ export default function CasePage() {
         setError(err instanceof ApiError ? err.message : "Could not load this case.");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -39,25 +40,61 @@ export default function CasePage() {
   }, [params.id]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="mx-auto max-w-2xl space-y-5 px-4 py-8 sm:px-6 sm:py-12">
+      <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-8 sm:px-6 sm:py-12 animate-enter">
         {loading && (
-          <p className="text-center text-sand-900/60" role="status">
-            Looking into your situation…
-          </p>
+          <div className="space-y-5" role="status">
+            <div className="flex items-center justify-center gap-2.5 text-center text-sm font-bold text-teal-900/70 py-2">
+              <svg
+                className="h-4 w-4 animate-spin text-teal-700"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span>Looking into your situation…</span>
+            </div>
+            {/* Shimmer skeleton cards to eliminate layout shift */}
+            <div className="h-24 rounded-2xl skeleton-shimmer border border-sand-200/50" />
+            <div className="h-48 rounded-2xl skeleton-shimmer border border-sand-200/50" />
+            <div className="h-32 rounded-2xl skeleton-shimmer border border-sand-200/50" />
+          </div>
         )}
 
         {error && !loading && (
-          <div role="alert" className="rounded-xl border border-tier-red-border bg-tier-red-bg p-5">
-            <p className="font-bold text-tier-red-text">{error}</p>
-            <p className="mt-2 text-sm text-tier-red-text/90">
-              If this doesn&rsquo;t resolve, call the PMJAY helpline at{" "}
-              <a href="tel:14555" className="font-bold underline">
-                14555
-              </a>
-              .
-            </p>
+          <div 
+            role="alert" 
+            className="rounded-2xl border-2 border-tier-red-border bg-tier-red-bg/95 p-5 sm:p-7 shadow-sm backdrop-blur-md animate-enter"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-tier-red-strong text-white font-bold text-sm">
+                !
+              </span>
+              <div>
+                <p className="font-bold text-lg text-tier-red-text">{error}</p>
+                <p className="mt-2 text-sm text-tier-red-text/90 leading-relaxed">
+                  If this doesn&rsquo;t resolve, call the PMJAY helpline at{" "}
+                  <a href="tel:14555" className="font-bold underline decoration-tier-red-strong">
+                    14555
+                  </a>
+                  .
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

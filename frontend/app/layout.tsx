@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -40,12 +40,19 @@ export const metadata: Metadata = {
     "Free help understanding whether a hospital's PMJAY coverage denial is correct — right when you're standing at the billing desk.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#fbf9f4",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased`}>
+    <html lang="en" className="scroll-smooth">
+      <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased selection:bg-teal-100 selection:text-teal-900 min-h-screen flex flex-col`}>
         {children}
       </body>
     </html>

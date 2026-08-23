@@ -1,41 +1,49 @@
 import { caseDocumentUrl } from "@/lib/api";
 
 /**
- * CaseDocumentPanel is the one clearly-actionable "take this with you"
- * artifact on the case result page: a link to the same case content
- * (backend/internal/document's BuildCase), formatted as one downloadable,
- * printable PDF instead of the individual on-screen sections above and
- * below it. See internal/document/README.md for why this exists — in
- * short, "copy this text" (CopyableTextBox) still leaves a family
- * needing somewhere to paste it before they can hand it to anyone;
- * this gives them something to hand over directly.
- *
- * A plain anchor tag with target="_blank", not a click handler that
- * fetches and saves a blob — letting the browser navigate to the PDF
- * directly means its native viewer (present on every modern desktop and
- * mobile browser) provides print/save/share controls for free, and
- * degrades gracefully on however this ends up being opened (in-app
- * browser, older Android WebView, and so on) in a way a hand-rolled
- * download flow wouldn't reliably match.
+ * CaseDocumentPanel provides a direct link to the backend's compiled PDF
+ * document for the case.
  */
 export function CaseDocumentPanel({ caseId }: { caseId: string }) {
   return (
-    <section className="rounded-xl border border-sand-200 bg-white p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-teal-800">Your case as one document</h2>
-          <p className="mt-1 text-sm text-sand-900/70">
-            Everything above, formatted as one PDF you can print, save, or hand to hospital
-            staff — including the draft complaint and hospital script, if this case has them.
-          </p>
+    <section className="glass-panel p-6 sm:p-8 animate-enter">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-800 shadow-xs" aria-hidden="true">
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-teal-950">
+              Your case as one document
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm leading-relaxed text-sand-900/75 max-w-md font-medium">
+              Everything above, formatted as one PDF you can print, save, or hand to hospital
+              staff — including the draft complaint and hospital script, if this case has them.
+            </p>
+          </div>
         </div>
         <a
           href={caseDocumentUrl(caseId)}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 rounded-lg border-2 border-teal-700 bg-teal-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-800 active:bg-teal-900"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-800 px-6 py-3.5 text-sm font-bold text-white shadow-md transition touch-spring hover:bg-teal-900 hover:shadow-lg active:scale-95 focus-visible:outline-teal-600 self-start sm:self-auto shrink-0"
         >
-          Download PDF
+          <span>Download PDF</span>
+          <span aria-hidden="true">↓</span>
         </a>
       </div>
     </section>

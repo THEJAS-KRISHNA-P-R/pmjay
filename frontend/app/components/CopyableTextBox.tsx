@@ -19,31 +19,38 @@ export function CopyableTextBox({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Clipboard API can fail (older browsers, permissions) — the text
-      // is still fully selectable/readable in the box below, so this is
-      // a degraded experience, not a broken one.
+      // Clipboard API fallback
     }
   }
 
   return (
-    <section className="rounded-xl border border-sand-200 bg-white p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-teal-800">{title}</h2>
-          {helperText && <p className="mt-1 text-sm text-sand-900/70">{helperText}</p>}
+    <section className="glass-panel p-6 sm:p-8 animate-enter">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3.5 sm:gap-4">
+        <div className="space-y-1">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-teal-950">{title}</h2>
+          {helperText && (
+            <p className="text-xs sm:text-sm leading-relaxed text-sand-900/70">{helperText}</p>
+          )}
         </div>
         <button
           type="button"
           onClick={handleCopy}
-          className="shrink-0 rounded-lg border-2 border-teal-700 bg-white px-4 py-2 text-sm font-bold text-teal-800 transition hover:bg-teal-50 active:bg-teal-100"
+          className={`shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold transition touch-spring shadow-xs focus-visible:outline-teal-600 ${
+            copied
+              ? "bg-emerald-700 text-white scale-105"
+              : "bg-teal-800 text-white hover:bg-teal-900 active:scale-95"
+          }`}
           aria-live="polite"
         >
           {copied ? "Copied ✓" : "Copy"}
         </button>
       </div>
-      <pre className="mt-4 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-sand-100 p-4 font-sans text-sm leading-relaxed text-sand-900">
-        {text}
-      </pre>
+      
+      <div className="relative mt-5">
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand-100/65 p-4 sm:p-5 font-sans text-xs sm:text-sm leading-relaxed text-sand-900 shadow-inner">
+          {text}
+        </pre>
+      </div>
     </section>
   );
 }
