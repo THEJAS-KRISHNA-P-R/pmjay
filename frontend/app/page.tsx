@@ -1,5 +1,7 @@
 import { Header } from "./components/Header";
 import { IntakeForm } from "./components/IntakeForm";
+import { Features } from "./components/landing/Features";
+import { Comparison } from "./components/landing/Comparison";
 import { HowItWorks } from "./components/landing/HowItWorks";
 import { ScenarioGrid } from "./components/landing/ScenarioGrid";
 import { SafetyPledge } from "./components/landing/SafetyPledge";
@@ -16,7 +18,7 @@ export default function HomePage() {
         <div className="space-y-8">
           <div className="space-y-3.5 max-w-2xl">
             <div className="inline-flex items-center rounded-full bg-teal-100/70 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-teal-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] backdrop-blur-sm">
-              Point-of-Denial Assistance
+              Hospital Point-of-Denial Assistance
             </div>
             
             <h1 className="font-display text-3xl sm:text-5xl font-semibold leading-tight tracking-tight-display text-teal-950">
@@ -31,8 +33,24 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="glass-panel-elevated p-6 sm:p-8">
-            <IntakeForm />
+          {/* Intake Card with Browser Mockup Header */}
+          <div className="glass-panel-elevated overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 bg-sand-100/70 border-b border-sand-200/40">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <span className="ml-2 font-mono text-[11px] font-bold text-sand-900/50">
+                  pmjay-advocate.org / intake-evaluator
+                </span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full">
+                Active Desk Mode
+              </span>
+            </div>
+            <div className="p-6 sm:p-8">
+              <IntakeForm />
+            </div>
           </div>
 
           {/* Quick Trust / Scope Metrics Bar */}
@@ -61,8 +79,14 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Platform Capabilities (yourfee.in style feature grid) */}
+        <Features />
+
         {/* 3-Step Process */}
         <HowItWorks />
+
+        {/* Detailed Comparison Table (Advocate vs Typical Alternatives) */}
+        <Comparison />
 
         {/* Common Denial Scenarios & Tiers */}
         <ScenarioGrid />
