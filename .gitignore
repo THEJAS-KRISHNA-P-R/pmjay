@@ -1,0 +1,34 @@
+# Backend
+backend/data/
+backend/bin/
+*.exe
+*.test
+*.out
+*.tmp
+/tmp/
+__pycache__/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/next-env.d.ts
+
+# Secrets and Environment Files (NEVER COMMIT)
+.env
+.env.*
+.env.local
+*.env
+*.env.local
+backend/.env
+frontend/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

@@ -1,0 +1,35 @@
+[
+  {
+    "category": "opd_only",
+    "display_name": "Outpatient (OPD) Consultation",
+    "description": "A consultation, check-up, or minor treatment that does not require the patient to be admitted to the hospital is generally not covered under PMJAY, which is built around secondary and tertiary hospitalisation.",
+    "keywords": ["consultation only", "just checkup", "opd", "doctor visit", "no admission", "outpatient"],
+    "source_note": "Reported government reply, Rajya Sabha (as cited in the source spec, Section 6.6). Carried forward from the spec's own research log (Section 22.1); not independently re-verified against the primary Rajya Sabha record during this build.",
+    "verified": false
+  },
+  {
+    "category": "cosmetic",
+    "display_name": "Cosmetic Surgery",
+    "description": "Cosmetic procedures — surgery intended to change appearance rather than treat a diagnosed medical or functional problem — are not covered under PMJAY. If a doctor has documented a genuine functional issue behind an otherwise cosmetic-sounding procedure, that changes how it may be classified; that judgement belongs to the treating doctor, not this tool.",
+    "keywords": ["cosmetic", "beauty surgery", "nose job", "rhinoplasty for appearance", "scar reduction for appearance", "plastic surgery for looks"],
+    "source_note": "Reported government reply, Rajya Sabha (as cited in the source spec, Section 6.6).",
+    "verified": false
+  },
+  {
+    "category": "fertility",
+    "display_name": "Fertility Treatment",
+    "description": "Fertility treatments, including IVF and related procedures, are not covered under PMJAY.",
+    "keywords": ["ivf", "fertility treatment", "infertility treatment", "test tube baby"],
+    "source_note": "Reported government reply, Rajya Sabha (as cited in the source spec, Section 6.6).",
+    "verified": false
+  },
+  {
+    "category": "organ_transplant_partial",
+    "display_name": "Organ Transplant (Partial / State-Dependent)",
+    "description": "Organ transplant is only partially covered, and only in some states, for specific procedures such as cornea or kidney transplant. Whether a specific transplant is covered genuinely depends on the state and the organ — this is not a simple yes or no, and should route to a human check rather than a confident answer either way.",
+    "keywords": ["transplant", "organ donation surgery", "kidney transplant", "cornea transplant", "liver transplant"],
+    "nuance": "State-dependent and procedure-specific. Route to amber (human-confirmation) rather than a flat red, since some transplant procedures genuinely are covered in some states.",
+    "source_note": "Reported government reply, Rajya Sabha (as cited in the source spec, Section 6.6).",
+    "verified": false
+  }
+]

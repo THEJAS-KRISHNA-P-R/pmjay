@@ -1,0 +1,27 @@
+# Design Foundations
+
+The motion, materials, and typography techniques elsewhere in this skill all serve a smaller set of underlying principles. When a design decision doesn't have an obvious answer, come back to these.
+
+## The eight principles
+
+1. **Purpose.** Design with intention, and be willing to decide what *not* to build. Every feature you ship is spending someone's time, attention, and trust — it should only get that budget if it actually pays off for them.
+2. **Agency.** Keep people in control: offer real choices instead of a single forced path, and back that up with forgiveness — easy undo for small mistakes, and a confirmation dialog reserved for genuinely destructive, hard-to-reverse actions. Overusing confirmation dialogs just trains people to click through them without reading.
+3. **Responsibility.** Act in the user's interest, not just the product's. On privacy: ask for access at the moment it's actually needed, ask only for what's needed, and be transparent about why. On safety: anticipate misuse, especially with anything AI-driven (a recipe assistant that knows about a user's allergy shouldn't suggest that ingredient). If a feature's downside risk outweighs its value, that's a reason to cut it, not ship it with a disclaimer.
+4. **Familiarity.** Build on what people already know rather than reinventing it. Metaphors work best when they're neither too literal nor too abstract (a trash can clearly means delete). Consistency matters even more than novelty: things that look the same should behave the same and live in the same place, so people can predict what happens before they act. Only break an established pattern if you can actually demonstrate the replacement is better — test it, don't just assume.
+5. **Flexibility.** Design for different devices, contexts, and abilities rather than one ideal user on one ideal screen. Adapt to the platform (a phone favors quick touch interactions; a desktop supports deeper workflows with a precise pointer) and to the situation. When no single layout serves everyone well, let people personalize it — reorder controls, hide what they don't use.
+6. **Simplicity, not minimalism.** Strip out what's unnecessary so the core purpose is obvious — but burying everything behind one generic button *looks* minimal without actually being simple. Aim for concise (plain language, no unnecessary jargon or steps) and clear (use hierarchy — order, spacing, contrast — so the most important thing is visibly the most important thing). Every element should earn its place on screen; sometimes the simplifying move is to *add* context rather than remove it (a scrubber that shows remaining time is simpler to use than one that doesn't, even though it shows more).
+7. **Craft.** Uncompromising attention to detail is what builds trust in software. That shows up as considered typography, colors that actually adapt correctly between light and dark, clear iconography, and animations that respond immediately and naturally rather than lagging. Nothing should be arbitrary — every spacing value, timing curve, and alignment choice should be something you could defend if asked. Jittery scrolling, misaligned icons, and layouts that break on rotation read as carelessness, even if the underlying feature works fine. Craft isn't a one-time pass either — it needs to keep evolving as features and hardware change.
+8. **Delight.** This is the result of getting the other seven right, not something layered on top of them afterward. Decide what emotion you actually want someone to feel using the product — calm, confident, excited — and make sure every decision reinforces that specific feeling rather than a generic "fun" gloss.
+
+## Practical patterns that follow from these
+
+- **Feedback comes in four flavors: status, completion, warning, error.** Confirm meaningful actions when they finish, expose ongoing status for anything that takes time, warn *before* something goes wrong rather than reporting it after, and validate input inline as someone types rather than only on submit.
+- **Every screen should answer four questions:** Where am I? Where can I go from here? What's actually on this screen? How do I get out? A design that leaves any of these unclear tends to make people feel lost — and someone who feels lost stops trusting the rest of the interface too. Never trap someone with no way back.
+- **Proximity implies relationship.** Put a control physically near whatever it affects, and arrange controls so their spatial layout mirrors what they actually change. If a control needs a label to explain what it does, that's usually a sign the placement itself isn't doing enough work.
+- **Specific labels beat safe, generic ones.** Naming a section for what's actually in it ("Progress", "Library") is more useful than a vague catch-all ("Home") — specificity is what lets someone predict what they'll find before they tap.
+
+## Process notes
+
+- **Prototype interactively rather than only in static mockups.** A working prototype — even a rough one — surfaces problems that flat comps hide, and it sets a concrete quality bar that's harder to quietly miss than a written spec.
+- **Design the interaction and the visuals together**, not in sequence. Motion isn't a layer you add after the pixels are settled; it's part of what the pixels are communicating.
+- **Review motion slowed down or frame-by-frame.** Problems that are invisible at full speed (a jump on interrupt, a mismatched easing curve) are usually obvious once you slow the playback down.

@@ -1,0 +1,6 @@
+# Case pages are private by design: reachable only by knowing a case's
+# unguessable ID, never meant to be discoverable. See next.config.mjs
+# for the X-Robots-Tag header that backs this up for crawlers that
+# don't respect robots.txt.
+User-agent: *
+Disallow: /case/

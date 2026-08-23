@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens for the PMJAY Point-of-Denial Advocate.
+ *
+ * Grounded in the product's own constraints, not generic aesthetic
+ * preference (see /mnt/skills/public/frontend-design's guidance on this):
+ *
+ * - Deep teal as the primary color: calm and clinical-but-warm, evoking
+ *   trust and public health without copying any specific government
+ *   scheme's actual logo/branding.
+ * - Warm marigold as the accent: hope and warmth, distinctly Indian-civic
+ *   in feeling without reproducing flag colors literally.
+ * - Tier colors are deliberately MUTED, not the saturated red/amber/green
+ *   of a typical status-light UI. A family reading this may already be
+ *   frightened; the red tier especially should read as "clear and calm"
+ *   rather than "alarm klaxon" — Section 10's care-first framing extends
+ *   to the visual design, not just the copy.
+ * - Body text uses Atkinson Hyperlegible everywhere, including headings.
+ *   It's a typeface designed specifically for readers who find text
+ *   difficult to read accurately — a functional requirement for this
+ *   product's named user, not a stylistic pick. See docs/DATA_SOURCES.md
+ *   sibling note in ARCHITECTURE.md for the reasoning written out in full.
+ */
+
+@theme {
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --color-teal-50: #eaf4f3;
+  --color-teal-100: #cfe6e3;
+  --color-teal-200: #a3d0ca;
+  --color-teal-300: #71b6ac;
+  --color-teal-400: #499a8e;
+  --color-teal-500: #2f7f73;
+  --color-teal-600: #24685d;
+  --color-teal-700: #1d564c;
+  --color-teal-800: #17453d;
+  --color-teal-900: #0d3634;
+  --color-teal-950: #082220;
+
+  --color-marigold-50: #fdf6e9;
+  --color-marigold-100: #faeac6;
+  --color-marigold-200: #f3d491;
+  --color-marigold-300: #eabb5c;
+  --color-marigold-400: #e0a239;
+  --color-marigold-500: #cf8722;
+  --color-marigold-600: #b06e1a;
+  --color-marigold-700: #8c5518;
+  --color-marigold-800: #714419;
+  --color-marigold-900: #5e3919;
+
+  --color-sand-50: #fbf9f4;
+  --color-sand-100: #f4efe3;
+  --color-sand-200: #e8dfc9;
+  --color-sand-900: #2b2620;
+
+  --color-tier-green-bg: #e6f2ea;
+  --color-tier-green-border: #a9d0b8;
+  --color-tier-green-text: #245c3e;
+  --color-tier-green-strong: #2f7d5a;
+
+  --color-tier-amber-bg: #faf0dd;
+  --color-tier-amber-border: #e6c483;
+  --color-tier-amber-text: #7a4f0f;
+  --color-tier-amber-strong: #b06e1a;
+
+  --color-tier-red-bg: #f6e9e7;
+  --color-tier-red-border: #d9aca5;
+  --color-tier-red-text: #7a3129;
+  --color-tier-red-strong: #a8433a;
+
+  --color-tier-mixed-bg: linear-gradient(135deg, #e6f2ea 0%, #faf0dd 100%);
+  --color-tier-handoff-bg: #e3edec;
+  --color-tier-handoff-border: #a9c4c1;
+  --color-tier-handoff-text: #1d564c;
+  --color-tier-handoff-strong: #24685d;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-sand-50);
+  color: var(--color-sand-900);
+}
+
+/* Focus rings visible and generous — this is a stressed-user, possibly
+   low-vision, possibly first-time-smartphone-user product. Browser
+   defaults are not enough. */
+:focus-visible {
+  outline: 3px solid var(--color-teal-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Minimum comfortable tap target size on every interactive element,
+   enforced globally rather than trusted to each component author to
+   remember (Appendix K's accessibility requirements). */
+button,
+a[role="button"],
+input,
+textarea {
+  min-height: 44px;
+}
