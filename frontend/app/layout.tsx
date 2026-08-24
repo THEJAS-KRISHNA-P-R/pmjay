@@ -38,13 +38,22 @@ export const metadata: Metadata = {
   title: "PMJAY Point-of-Denial Advocate",
   description:
     "Free help understanding whether a hospital's PMJAY coverage denial is correct — right when you're standing at the billing desk.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#fbf9f4",
+  themeColor: "#faf8f3",
 };
 
 export default function RootLayout({
@@ -52,7 +61,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased selection:bg-teal-100 selection:text-teal-900 min-h-screen flex flex-col`}>
+      <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased min-h-screen flex flex-col`}>
         {children}
       </body>
     </html>

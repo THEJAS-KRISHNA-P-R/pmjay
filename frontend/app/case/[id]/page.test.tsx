@@ -17,6 +17,10 @@ import { ApiError } from "@/lib/api";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "case-123" }),
+  // Header (rendered at the top of this page) calls usePathname() to
+  // highlight the active nav link — without this, the mock module
+  // shadows the real export entirely and Header throws.
+  usePathname: () => "/case/case-123",
 }));
 
 const getCaseMock = vi.fn();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IconCopy, IconCheck } from "./icons";
 
 export function CopyableTextBox({
   title,
@@ -24,30 +25,31 @@ export function CopyableTextBox({
   }
 
   return (
-    <section className="glass-panel p-6 sm:p-8 animate-enter">
+    <section className="card p-6 sm:p-8 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3.5 sm:gap-4">
         <div className="space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-teal-950">{title}</h2>
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-sand-900">{title}</h2>
           {helperText && (
-            <p className="text-xs sm:text-sm leading-relaxed text-sand-900/70">{helperText}</p>
+            <p className="text-xs sm:text-sm leading-relaxed text-sand-600">{helperText}</p>
           )}
         </div>
         <button
           type="button"
           onClick={handleCopy}
-          className={`shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold transition touch-spring shadow-xs focus-visible:outline-teal-600 ${
+          className={`tap-target shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold transition-all active:scale-95 ${
             copied
-              ? "bg-emerald-700 text-white scale-105"
-              : "bg-teal-800 text-white hover:bg-teal-900 active:scale-95"
+              ? "bg-tier-green-text text-white"
+              : "bg-teal-700 text-white hover:bg-teal-800"
           }`}
           aria-live="polite"
         >
-          {copied ? "Copied ✓" : "Copy"}
+          {copied ? <IconCheck className="h-4 w-4" /> : <IconCopy className="h-4 w-4" />}
+          {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      
+
       <div className="relative mt-5">
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand-100/65 p-4 sm:p-5 font-sans text-xs sm:text-sm leading-relaxed text-sand-900 shadow-inner">
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-2xl bg-sand-100 border border-sand-200/70 p-4 sm:p-5 font-sans text-xs sm:text-sm leading-relaxed text-sand-800">
           {text}
         </pre>
       </div>

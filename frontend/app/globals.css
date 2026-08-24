@@ -1,191 +1,325 @@
 @import "tailwindcss";
 
-/*
- * Apple-Grade Liquid Glass Design System for PMJAY Advocate.
- *
- * Boundary definition is achieved through elevation, atmospheric diffusion,
- * and specular inner lighting highlights rather than typical 1px wireframe borders.
- */
+/* ------------------------------------------------------------------ */
+/* Fonts                                                               */
+/* ------------------------------------------------------------------ */
+/* The actual font files are self-hosted and loaded via next/font/local
+   in app/layout.tsx (see that file for why: this build sandbox can't
+   reach fonts.googleapis.com at runtime, so a CSS @import of a Google
+   Fonts URL — which is what this line used to be — would silently fail
+   here and in any similarly locked-down deployment). layout.tsx exposes
+   the loaded fonts as --font-atkinson and --font-fraunces on <body>;
+   these theme tokens just alias Tailwind's font-sans / font-display
+   utilities to those, with the same web-safe fallback stacks.
+   Atkinson Hyperlegible: designed by the Braille Institute specifically
+   for maximum character-to-character legibility at small sizes and for
+   low-vision readers. Used for every piece of functional text in this
+   app — this is an accessibility decision, not a style choice, so it
+   is not swapped out lightly.
+   Fraunces: a warm, humanist serif used sparingly for the handful of
+   large display moments (hero heading, section titles) to give the
+   product a considered, non-generic feel without hurting legibility,
+   since body copy never uses it. */
 
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* ------------------------------------------------------------------ */
 @theme {
-  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 
-  --color-teal-50: #eaf4f3;
-  --color-teal-100: #cfe6e3;
-  --color-teal-200: #a3d0ca;
-  --color-teal-300: #71b6ac;
-  --color-teal-400: #499a8e;
-  --color-teal-500: #2f7f73;
-  --color-teal-600: #24685d;
-  --color-teal-700: #1d564c;
-  --color-teal-800: #17453d;
-  --color-teal-900: #0d3634;
-  --color-teal-950: #082220;
+  /* Primary — deep teal, pulled toward "ink" rather than "spa." Reads as
+     calm and trustworthy without tipping into generic wellness-app
+     brightness — deliberately lower saturation and a deeper 600/700 than
+     a typical marketing teal, so it holds up as a serious text and
+     button color carrying real legal/financial content, not just a
+     decorative wash. */
+  --color-teal-50: #f0faf9;
+  --color-teal-100: #daf1ee;
+  --color-teal-200: #b6e3dc;
+  --color-teal-300: #86cec2;
+  --color-teal-400: #57b0a2;
+  --color-teal-500: #368f82;
+  --color-teal-600: #26746a; /* primary buttons, links, icon strokes */
+  --color-teal-700: #205f57;
+  --color-teal-800: #1d4d47;
+  --color-teal-900: #1a3f3a;
+  --color-teal-950: #0c2321;
 
-  --color-marigold-50: #fdf6e9;
-  --color-marigold-100: #faeac6;
-  --color-marigold-200: #f3d491;
-  --color-marigold-300: #eabb5c;
-  --color-marigold-400: #e0a239;
-  --color-marigold-500: #cf8722;
-  --color-marigold-600: #b06e1a;
-  --color-marigold-700: #8c5518;
-  --color-marigold-800: #714419;
-  --color-marigold-900: #5e3919;
+  /* Accent — marigold, deepened the same way (an "ember" rather than a
+     bright craft-supply yellow) so it reads as a considered accent, not
+     a stock warning color borrowed from a UI kit. Used sparingly: small
+     highlights, a badge here and there. Never a large surface, so it
+     never competes with the primary teal for attention. */
+  --color-marigold-50: #fdf8ec;
+  --color-marigold-100: #f9ecc9;
+  --color-marigold-200: #f3d68d;
+  --color-marigold-300: #ecbc55;
+  --color-marigold-400: #e0a12a;
+  --color-marigold-500: #cc8712;
+  --color-marigold-600: #a86b0c;
+  --color-marigold-700: #86530d;
+  --color-marigold-800: #6d4312;
+  --color-marigold-900: #5b3813;
 
-  --color-sand-50: #fbf9f4;
-  --color-sand-100: #f4efe3;
-  --color-sand-200: #e8dfc9;
-  --color-sand-300: #dacfb5;
-  --color-sand-900: #2b2620;
+  /* Neutral — warm sand, not cold gray. Backgrounds, borders, and body
+     text all live on this scale so the whole app reads as one warm,
+     paper-like surface rather than a stark white SaaS template. */
+  --color-sand-25: #fdfcfa;
+  --color-sand-50: #faf8f3;
+  --color-sand-100: #f3f0e8;
+  --color-sand-200: #e6e0d2;
+  --color-sand-300: #d3cab4;
+  --color-sand-400: #b0a68b;
+  --color-sand-500: #8c8169;
+  --color-sand-600: #6c6252;
+  --color-sand-700: #554c40;
+  --color-sand-800: #403a31;
+  --color-sand-900: #2a2621;
+  --color-sand-950: #1a1713;
 
-  --color-tier-green-bg: #e6f2ea;
-  --color-tier-green-border: rgba(47, 125, 90, 0.2);
-  --color-tier-green-text: #245c3e;
-  --color-tier-green-strong: #2f7d5a;
+  /* Tier / outcome colors — muted on purpose. These carry real news
+     (sometimes bad news) to someone under real stress, so none of them
+     is allowed to read as a stoplight or an error state. Every tier
+     also gets a distinct icon + label in the components that use these
+     — color is reinforcement here, never the only signal. */
+  --color-tier-green-bg: #eaf6ee;
+  --color-tier-green-border: #b7ddc2;
+  --color-tier-green-icon: #d9efe0;
+  --color-tier-green-text: #1e6b3d;
 
-  --color-tier-amber-bg: #faf0dd;
-  --color-tier-amber-border: rgba(176, 110, 26, 0.25);
-  --color-tier-amber-text: #7a4f0f;
-  --color-tier-amber-strong: #b06e1a;
+  --color-tier-amber-bg: #fdf5e4;
+  --color-tier-amber-border: #efd99a;
+  --color-tier-amber-icon: #f8e8c2;
+  --color-tier-amber-text: #8f5f09;
 
-  --color-tier-red-bg: #f6e9e7;
-  --color-tier-red-border: rgba(168, 67, 58, 0.25);
-  --color-tier-red-text: #7a3129;
-  --color-tier-red-strong: #a8433a;
+  --color-tier-red-bg: #fbeeec;
+  --color-tier-red-border: #e7beb6;
+  --color-tier-red-icon: #f4dcd6;
+  --color-tier-red-text: #953f2d;
 
-  --color-tier-mixed-bg: linear-gradient(135deg, #e6f2ea 0%, #faf0dd 100%);
-  --color-tier-handoff-bg: #e3edec;
-  --color-tier-handoff-border: rgba(29, 86, 76, 0.2);
-  --color-tier-handoff-text: #1d564c;
-  --color-tier-handoff-strong: #24685d;
-}
+  --color-tier-mixed-bg: #f4eef8;
+  --color-tier-mixed-border: #d8c2e7;
+  --color-tier-mixed-icon: #ecdff3;
+  --color-tier-mixed-text: #693e8c;
 
-:root {
-  color-scheme: light;
-  --radius-card: 1.5rem; /* 24px outer */
-  --radius-inner: 1rem; /* 16px inner */
-  --radius-pill: 9999px;
+  --color-tier-handoff-bg: #eaf1fb;
+  --color-tier-handoff-border: #b8cfee;
+  --color-tier-handoff-icon: #dbe8f9;
+  --color-tier-handoff-text: #23568f;
 
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-quick: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Apple-style layered elevation without harsh stroke borders */
-  --shadow-glass: 0 10px 30px -5px rgba(13, 54, 52, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.02), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
-  --shadow-glass-elevated: 0 20px 45px -10px rgba(13, 54, 52, 0.09), 0 4px 12px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
-  --shadow-subtle: 0 2px 8px -1px rgba(13, 54, 52, 0.04), inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
-}
+  --animate-fade-in: fade-in 0.35s var(--ease-out-quick) both;
+  --animate-fade-in-up: fade-in-up 0.4s var(--ease-out-quick) both;
 
-body {
-  background-color: #f8f6f0;
-  background-image: 
-    radial-gradient(at 15% 15%, rgba(113, 182, 172, 0.15) 0px, transparent 55%),
-    radial-gradient(at 85% 10%, rgba(243, 212, 145, 0.16) 0px, transparent 50%),
-    radial-gradient(at 50% 85%, rgba(207, 230, 227, 0.2) 0px, transparent 65%);
-  background-attachment: fixed;
-  color: var(--color-sand-900);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Fluid Apple Glass Panels */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  box-shadow: var(--shadow-glass);
-  border-radius: var(--radius-card);
-  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease-spring);
-}
-
-.glass-panel-elevated {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  box-shadow: var(--shadow-glass-elevated);
-  border-radius: var(--radius-card);
-}
-
-.glass-inset {
-  background: rgba(244, 239, 227, 0.55);
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.03);
-  border-radius: var(--radius-inner);
-}
-
-/* Tactile Spring Press Feedback */
-.touch-spring {
-  transition: transform 0.15s var(--ease-spring), background-color 0.15s ease, box-shadow 0.15s ease;
-  will-change: transform;
-}
-
-.touch-spring:active {
-  transform: scale(0.975);
-}
-
-.tracking-tight-display {
-  letter-spacing: -0.025em;
-}
-
-.tracking-body {
-  letter-spacing: 0.005em;
-}
-
-/* Focus rings with generous contrast */
-:focus-visible {
-  outline: 3px solid var(--color-teal-500);
-  outline-offset: 2px;
-  border-radius: var(--radius-inner);
-}
-
-/* Minimum comfortable tap target size (>=44pt) */
-button,
-a[role="button"],
-input,
-textarea {
-  min-height: 44px;
-}
-
-/* Animations */
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.985) translateY(8px);
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
-.animate-enter {
-  animation: fadeInScale 0.35s var(--ease-spring) forwards;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+/* ------------------------------------------------------------------ */
+/* Base                                                                 */
+/* ------------------------------------------------------------------ */
+@layer base {
+  * {
+    border-color: var(--color-sand-200);
   }
-  100% {
-    background-position: 200% 0;
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-sand-50);
+    color: var(--color-sand-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-teal-200);
+    color: var(--color-teal-950);
+  }
+
+  /* One visible, high-contrast focus style everywhere — never removed,
+     never replaced with a subtle box-shadow that fails at a glance.
+     A family filling this out at a hospital desk may be tabbing
+     through on a keyboard-only kiosk browser. */
+  :focus-visible {
+    outline: 2.5px solid var(--color-teal-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-.skeleton-shimmer {
-  background: linear-gradient(90deg, rgba(232, 223, 201, 0.45) 25%, rgba(255, 255, 255, 0.7) 50%, rgba(232, 223, 201, 0.45) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s infinite ease-in-out;
-}
+/* ------------------------------------------------------------------ */
+/* Shared component classes                                            */
+/* ------------------------------------------------------------------ */
+@layer components {
+  /* Default surface for cards, panels, list items — solid, not glass.
+     A flat sand-tinted white with a hairline border and a soft shadow
+     reads as calmer and more legible than translucency, and it's what
+     almost everything in this app should use. */
+  .card {
+    background-color: white;
+    border: 1px solid var(--color-sand-200);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(42, 38, 33, 0.04), 0 1px 3px rgba(42, 38, 33, 0.03);
+  }
 
-/* Respect Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-    transform: none !important;
+  /* No glassmorphism anywhere in this app — a deliberate, cross-project
+     choice (matches the house style set on other production apps: no
+     blur-and-translucency layering). Every surface is solid so it reads
+     as a serious tool handling real coverage decisions, not a trendy
+     template. The sticky header and the hero intake "card" both use
+     plain `.card` plus a stronger shadow/border for weight instead of
+     translucency. */
+
+  /* Small, precise status/category tag — never a full pill, never a
+     bare colored dot. Structural rules only; callers add the semantic
+     color via ordinary bg-, border-, and text- color utilities alongside
+     this class, e.g. `badge bg-teal-50 border-teal-200 text-teal-800`. */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 0.375rem;
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 1;
+  }
+
+  /* Minimum comfortable tap target on touch devices, per WCAG 2.5.8 and
+     every mobile HIG going. Applied to anything tappable that would
+     otherwise render smaller than 44x44. */
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .tracking-tight-display {
+    letter-spacing: -0.02em;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    background-color: var(--color-teal-600);
+    color: white;
+    font-weight: 700;
+    transition: background-color 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-teal-700);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    background-color: var(--color-sand-300);
+    color: var(--color-sand-600);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1.5px solid var(--color-sand-300);
+    background-color: white;
+    color: var(--color-sand-800);
+    font-weight: 700;
+    transition: border-color 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-teal-400);
+    background-color: var(--color-teal-50);
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  /* Shared text input / textarea treatment — one definition so every
+     form field in the app focuses, disables, and placeholder-colors the
+     same way instead of each component reinventing it. */
+  .field {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1.5px solid var(--color-sand-200);
+    background-color: white;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-sand-900);
+    transition: border-color 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick);
+  }
+  .field::placeholder {
+    color: var(--color-sand-400);
+  }
+  .field:hover {
+    border-color: var(--color-sand-300);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-teal-500);
+  }
+
+  /* Loading-state placeholder for content whose final height is already
+     known (case results page) -- holds the layout still so nothing
+     jumps when the real content swaps in. */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      100deg,
+      var(--color-sand-100) 30%,
+      var(--color-sand-200) 50%,
+      var(--color-sand-100) 70%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer-move 1.6s ease-in-out infinite;
+  }
+  @keyframes skeleton-shimmer-move {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
   }
 }

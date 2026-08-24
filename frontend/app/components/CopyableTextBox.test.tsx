@@ -55,7 +55,7 @@ describe("CopyableTextBox", () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(button).toHaveTextContent("Copied ✓");
+    expect(button).toHaveTextContent("Copied");
 
     act(() => {
       vi.advanceTimersByTime(2500);

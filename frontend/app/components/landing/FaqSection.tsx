@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { IconChevronDown } from "../icons";
 
-export function FaqSection() {
+export function FaqSection({ hideHeader = false }: { hideHeader?: boolean }) {
   const faqs = [
     {
       q: "Can an empanelled hospital ask for an advance cash deposit for PMJAY treatment?",
@@ -24,59 +25,57 @@ export function FaqSection() {
       q: "What if the hospital refuses to give a written denial reason?",
       a: "Use our 'Keep a Record' evidence tool on your case page to log the staff member's name, timestamp, and verbal statements. This timestamped evidence is embedded into your downloadable case PDF for official dispute filing.",
     },
+    {
+      q: "Does this work in Malayalam or Hindi, not just English?",
+      a: "Yes. You can describe your situation in English, native Malayalam script (മലയാളം), or Hindi (हिन्दी). Please note that Malayalam typed using English letters (Manglish transliteration) is not supported — please type in native script or standard English for accurate package evaluation.",
+    },
+    {
+      q: "Do I need to create an account or share my phone number?",
+      a: "No. There's no login, no phone number, and no tracking required to use this tool. Your case is saved behind a private, hard-to-guess link so you (or whoever is helping you) can return to it or download the PDF later — nothing is shared with hospitals, insurers, or any government system automatically.",
+    },
   ];
 
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
     <section aria-labelledby="faq-title" className="space-y-6">
-      <div className="text-center space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
-          Clear Answers to Critical Questions
-        </p>
-        <h2 id="faq-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-teal-950">
-          Frequently Asked Questions
-        </h2>
-        <p className="text-sm sm:text-base text-sand-900/70 max-w-xl mx-auto font-medium">
-          Know your rights and standard operating procedures under the Ayushman Bharat scheme.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div className="text-center space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+            Clear Answers to Critical Questions
+          </p>
+          <h2 id="faq-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-sand-900">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-sm sm:text-base text-sand-600 max-w-xl mx-auto font-medium">
+            Know your rights and standard operating procedures under the Ayushman Bharat scheme.
+          </p>
+        </div>
+      )}
 
-      <div className="space-y-3 pt-2">
+      <div className="space-y-3">
         {faqs.map((faq, index) => {
           const isOpen = openIndex === index;
           return (
-            <div
-              key={index}
-              className="glass-panel overflow-hidden transition-all"
-            >
+            <div key={index} className="card overflow-hidden">
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="w-full flex items-center justify-between p-5 sm:p-6 text-left focus-visible:outline-teal-600 touch-spring"
+                className="w-full flex items-center justify-between p-5 sm:p-6 text-left"
                 aria-expanded={isOpen}
               >
-                <span className="font-display text-base sm:text-lg font-bold text-teal-950 pr-4">
+                <span className="font-display text-base sm:text-lg font-bold text-sand-900 pr-4">
                   {faq.q}
                 </span>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-sand-100/80 text-teal-800 font-bold transition-transform duration-200">
-                  <svg
-                    className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-sand-100 text-teal-700">
+                  <IconChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  />
                 </span>
               </button>
               {isOpen && (
-                <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-1 text-xs sm:text-sm text-sand-900/80 leading-relaxed font-medium">
-                  <p>{faq.a}</p>
+                <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-1 text-xs sm:text-sm text-sand-700 leading-relaxed font-medium border-t border-sand-100">
+                  <p className="pt-4">{faq.a}</p>
                 </div>
               )}
             </div>

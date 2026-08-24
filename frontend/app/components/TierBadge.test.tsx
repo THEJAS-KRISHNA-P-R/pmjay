@@ -19,13 +19,15 @@ describe("TierBadge", () => {
       // being caught by someone re-reading that comment.
       expect(screen.getByText(style.label)).toBeInTheDocument();
       expect(screen.getByText(style.description)).toBeInTheDocument();
-      expect(screen.getByText(style.icon)).toBeInTheDocument();
+      const icon = screen.getByTestId("tier-icon");
+      expect(icon).toHaveAttribute("data-icon", style.iconName);
+      expect(icon.querySelector("svg")).not.toBeNull();
     },
   );
 
-  it("marks the icon glyph aria-hidden, since the adjacent text already carries the meaning", () => {
+  it("marks the icon wrapper aria-hidden, since the adjacent text already carries the meaning", () => {
     render(<TierBadge outcome="green" />);
-    const icon = screen.getByText(TIER_STYLES.green.icon);
+    const icon = screen.getByTestId("tier-icon");
     expect(icon).toHaveAttribute("aria-hidden", "true");
   });
 
@@ -37,7 +39,8 @@ describe("TierBadge", () => {
       // rather than trusting the styles object was written correctly.
       const otherOutcomes = ALL_OUTCOMES.filter((o) => o !== outcome);
       for (const other of otherOutcomes) {
-        expect(TIER_STYLES[outcome].icon).not.toBe(TIER_STYLES[other].icon);
+        expect(TIER_STYLES[outcome].iconName).not.toBe(TIER_STYLES[other].iconName);
+        expect(TIER_STYLES[outcome].Icon).not.toBe(TIER_STYLES[other].Icon);
       }
     },
   );
