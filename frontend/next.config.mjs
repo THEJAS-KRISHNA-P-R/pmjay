@@ -13,7 +13,14 @@ const nextConfig = {
   //     (shared publicly by mistake, leaked via an analytics tool, etc).
   //     robots.txt (public/robots.txt) asks well-behaved crawlers not to
   //     visit at all; this is the header-level backstop for crawlers
-  //     that fetch anyway or don't respect robots.txt.
+  //     that fetch anyway or don't respect robots.txt. The same applies
+  //     to /dashboard and /settings even though neither has a secret in
+  //     its own URL: both are personalized, no-login "your data lives in
+  //     this browser" pages (see lib/caseHistory.ts) that have no
+  //     business appearing in search results either. /case/:path* is
+  //     kept alongside /cases/:path* below for old links, which still
+  //     resolve via a redirect (see app/case/[id]/page.tsx) rather than
+  //     disappearing outright.
   //   - Referrer-Policy: without this, following any link *out* of a
   //     case page would leak the full case URL — including the ID — to
   //     whatever site that link pointed to, via the Referer header.
@@ -26,6 +33,24 @@ const nextConfig = {
     return [
       {
         source: "/case/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/cases/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/dashboard",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
+        source: "/settings",
         headers: [
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],

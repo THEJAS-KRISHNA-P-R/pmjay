@@ -27,7 +27,7 @@ export function TierPanel({
       {citation && (
         <div className="mt-5 card p-4 sm:p-5 text-xs sm:text-sm">
           <p className="leading-relaxed text-sand-800">
-            <span className="font-bold text-teal-800">Based on: </span>
+            <span className="font-bold text-ink-800">Based on: </span>
             {citation}
           </p>
         </div>

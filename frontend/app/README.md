@@ -20,7 +20,12 @@ Next.js 16 App Router root. Four top-level files plus six subfolders — five of
 | `guide/` | The `/guide` ("Your Rights") page — see its own `README.md`. |
 | `faq/` | The `/faq` page — see its own `README.md`. |
 | `about/` | The `/about` page — see its own `README.md`. |
-| `case/[id]/` | The result page — see `case/[id]/README.md` (and `case/README.md` for why that intermediate folder exists). |
+| `dashboard/` | The `/dashboard` page for managing locally saved cases — see `dashboard/README.md`. |
+| `cases/` | Case workspaces (`/cases/[id]`, `/cases/new`) — see `cases/README.md`. |
+| `settings/` | User preferences & accessibility toggle page — see `settings/README.md`. |
+| `privacy/` | Privacy Policy (DPDP Act 2023 compliant) — see `privacy/README.md`. |
+| `terms/` | Terms of Service & emergency care clause — see `terms/README.md`. |
+| `disclaimer/` | Legal & Medical Disclaimers — see `disclaimer/README.md`. |
 | `fonts/` | Self-hosted font files — see `fonts/README.md`. |
 
 ## Why five pages instead of one long scroll

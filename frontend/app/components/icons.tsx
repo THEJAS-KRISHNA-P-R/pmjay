@@ -12,7 +12,7 @@
  * because the correct alternative text depends on context.
  *
  * Size and color are controlled entirely by `className` (e.g. "h-5 w-5
- * text-teal-600") so these compose naturally with Tailwind utilities.
+ * text-ink-600") so these compose naturally with Tailwind utilities.
  */
 
 export interface IconProps {
@@ -280,6 +280,114 @@ export function IconHeart({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
       <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+    </svg>
+  );
+}
+
+export function IconHome({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 11.5 12 4l8 7.5" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3v-5.5h4V20h3a1 1 0 0 0 1-1v-9" />
+    </svg>
+  );
+}
+
+export function IconPlus({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+export function IconSettings({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 1.5v2.5M12 20v2.5M1.5 12h2.5M20 12h2.5
+               M4.2 4.2l1.8 1.8M18 18l1.8 1.8M4.2 19.8l1.8-1.8M18 6l1.8-1.8
+               M6.5 2.5l2.5 1.5M15 2.5l-2.5 1.5M6.5 21.5l2.5-1.5M15 21.5l-2.5-1.5
+               M2.5 6.5l1.5 2.5M2.5 15l1.5-2.5M21.5 6.5l-1.5 2.5M21.5 15l-1.5-2.5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 6v1.5M12 16.5v1.5M6 12h1.5M16.5 12h1.5
+               M7.8 7.8l1 1M15.2 15.2l1 1M7.8 16.2l1-1M15.2 8.8l1-1" strokeWidth="1.25" />
+    </svg>
+  );
+}
+
+export function IconGlobe({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3c2.5 2.5 4 5.8 4 9s-1.5 6.5-4 9c-2.5-2.5-4-5.8-4-9s1.5-6.5 4-9Z" />
+    </svg>
+  );
+}
+
+export function IconClock({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5.5l3.5 2" />
+    </svg>
+  );
+}
+
+export function IconUser({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M4.5 20c1-3.8 4.2-6 7.5-6s6.5 2.2 7.5 6" />
+    </svg>
+  );
+}
+
+export function IconBell({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 10.5a6 6 0 0 1 12 0c0 3.6 1 5.2 1.6 6a.8.8 0 0 1-.6 1.3H5a.8.8 0 0 1-.6-1.3c.6-.8 1.6-2.4 1.6-6Z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+export function IconEye({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconTrash({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2" />
+      <path d="M6.5 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4l.8-12" />
+      <line x1="10" y1="11" x2="10" y2="16.5" />
+      <line x1="14" y1="11" x2="14" y2="16.5" />
+    </svg>
+  );
+}
+
+export function IconExternalLink({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+      <path d="M14 4h6v6" />
+      <line x1="10" y1="14" x2="20" y2="4" />
+    </svg>
+  );
+}
+
+export function IconChevronLeft({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <polyline points="15 6 9 12 15 18" />
     </svg>
   );
 }

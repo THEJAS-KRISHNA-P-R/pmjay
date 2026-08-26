@@ -37,7 +37,7 @@ const fraunces = localFont({
 export const metadata: Metadata = {
   title: "PMJAY Point-of-Denial Advocate",
   description:
-    "Free help understanding whether a hospital's PMJAY coverage denial is correct — right when you're standing at the billing desk.",
+    "Free help understanding whether a hospital's PMJAY coverage denial is correct, right when you're standing at the billing desk.",
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -61,6 +61,23 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="scroll-smooth">
+      <head>
+        {/* Synchronous and pre-paint on purpose — this is the same
+            flash-of-wrong-appearance problem a dark-mode toggle has to
+            solve, just for text size instead of color scheme. Reading
+            localStorage from a client component (app/settings/page.tsx
+            or elsewhere) would only run after first paint, so anyone
+            with large-text mode on would see one frame (or, on a slow
+            connection, much longer) of normal-size text first. Fails
+            silently and simply does nothing if localStorage is
+            unavailable (private browsing, storage disabled) — same
+            posture as lib/caseHistory.ts's own defensive handling. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('pmjay-advocate:text-scale')==='large'){document.documentElement.setAttribute('data-text-scale','large');}}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased min-h-screen flex flex-col`}>
         {children}
       </body>

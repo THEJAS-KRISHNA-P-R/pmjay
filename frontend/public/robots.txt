@@ -1,6 +1,22 @@
-# Case pages are private by design: reachable only by knowing a case's
-# unguessable ID, never meant to be discoverable. See next.config.mjs
-# for the X-Robots-Tag header that backs this up for crawlers that
-# don't respect robots.txt.
+# PMJAY Advocate robots.txt
+# Public pages are indexable; case evaluation pages and dashboard/settings
+# are private and reachable only by unguessable ID or local browser storage.
+
 User-agent: *
+Allow: /
+Allow: /how-it-works
+Allow: /guide
+Allow: /faq
+Allow: /about
+Allow: /privacy
+Allow: /terms
+Allow: /disclaimer
+Allow: /llms.txt
+Allow: /llms-full.txt
+
 Disallow: /case/
+Disallow: /cases/
+Disallow: /dashboard
+Disallow: /settings
+
+Sitemap: https://pmjayadvocate.in/sitemap.xml

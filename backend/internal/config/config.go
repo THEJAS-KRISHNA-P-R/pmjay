@@ -77,6 +77,16 @@ type Config struct {
 	// somewhere, and this control is what keeps a bug from silently
 	// burning through it.
 	RateLimitPerMinute int
+
+	// RateLimitPerHour bounds how many intake requests one client IP
+	// may make per hour — a secondary backstop so a burst doesn't
+	// consume the daily budget.
+	RateLimitPerHour int
+
+	// MaxConcurrentLLM bounds simultaneous in-flight LLM calls —
+	// prevents thundering herd from overwhelming the provider or
+	// exhausting quota in a spike.
+	MaxConcurrentLLM int
 }
 
 // validLLMProviders is checked by Load — kept as an explicit set rather
@@ -98,17 +108,19 @@ var validLLMProviders = map[string]bool{
 // at startup, not mid-incident.
 func Load() (Config, error) {
 	cfg := Config{
-		Port:               getEnv("PORT", "8080"),
-		LLMProvider:        strings.ToLower(getEnv("LLM_PROVIDER", "anthropic")),
-		AnthropicAPIKey:    os.Getenv("ANTHROPIC_API_KEY"),
-		ClaudeModel:        getEnv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
-		GroqAPIKey:         os.Getenv("GROQ_API_KEY"),
-		GroqModel:          getEnv("GROQ_MODEL", "openai/gpt-oss-120b"),
-		GeminiAPIKey:       os.Getenv("GEMINI_API_KEY"),
-		GeminiModel:        getEnv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
-		DataFilePath:       getEnv("DATA_FILE_PATH", "./data/cases.json"),
-		AllowedOrigins:     splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:3000")),
-		RateLimitPerMinute: 10,
+		Port:                getEnv("PORT", "8080"),
+		LLMProvider:         strings.ToLower(getEnv("LLM_PROVIDER", "anthropic")),
+		AnthropicAPIKey:     os.Getenv("ANTHROPIC_API_KEY"),
+		ClaudeModel:         getEnv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
+		GroqAPIKey:          os.Getenv("GROQ_API_KEY"),
+		GroqModel:           getEnv("GROQ_MODEL", "openai/gpt-oss-120b"),
+		GeminiAPIKey:        os.Getenv("GEMINI_API_KEY"),
+		GeminiModel:         getEnv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+		DataFilePath:        getEnv("DATA_FILE_PATH", "./data/cases.json"),
+		AllowedOrigins:      splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:3000")),
+		RateLimitPerMinute:  1,
+		RateLimitPerHour:    20,
+		MaxConcurrentLLM:    3,
 	}
 
 	if !validLLMProviders[cfg.LLMProvider] {
@@ -124,6 +136,28 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("config: RATE_LIMIT_PER_MINUTE must be positive, got %d", n)
 		}
 		cfg.RateLimitPerMinute = n
+	}
+
+	if raw := os.Getenv("RATE_LIMIT_PER_HOUR"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: RATE_LIMIT_PER_HOUR must be an integer, got %q: %w", raw, err)
+		}
+		if n <= 0 {
+			return Config{}, fmt.Errorf("config: RATE_LIMIT_PER_HOUR must be positive, got %d", n)
+		}
+		cfg.RateLimitPerHour = n
+	}
+
+	if raw := os.Getenv("MAX_CONCURRENT_LLM"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: MAX_CONCURRENT_LLM must be an integer, got %q: %w", raw, err)
+		}
+		if n <= 0 {
+			return Config{}, fmt.Errorf("config: MAX_CONCURRENT_LLM must be positive, got %d", n)
+		}
+		cfg.MaxConcurrentLLM = n
 	}
 
 	if cfg.Port == "" {

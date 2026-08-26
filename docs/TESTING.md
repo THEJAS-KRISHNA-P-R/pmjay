@@ -11,7 +11,7 @@ go vet ./...                 # no vet warnings
 go test ./... -cover -race   # 268 tests, 10 packages, race detector on
 
 cd ../frontend
-npm test                     # 74 tests, 12 files (see "Frontend" section below)
+npm test                     # 77 tests, 12 files (see "Frontend" section below)
 ```
 
 No live `ANTHROPIC_API_KEY` is required for any of this — see "Why this is testable offline at all" below.

@@ -85,3 +85,69 @@ Two more substantial pieces of work landed after the section above was written, 
 **One more thing worth naming directly**: while adding this, a real, pre-existing documentation bug surfaced and got fixed along the way — 20 files across the entire repo (Go source comments and READMEs both, most predating this session) referenced `docs/ARCHITECTURE.md`, a path that has never existed; the file has always lived at the repo root. Not something this session introduced, but it did initially propagate the same wrong reference into the three new provider files before being caught and fixed, along with every pre-existing instance, in one pass. Worth mentioning because it's exactly the kind of small, easy-to-never-notice drift this project's own culture exists to catch — and because it was caught by testing whether a written claim ("this file is at this path") actually resolved, not by re-reading the prose and feeling confident about it.
 
 None of this changes what's listed as genuinely still open above — Section 20.1, the seven missing specialties, PDF accessibility, and the rest all still stand exactly as written. The multi-provider work is additive: real, tested, documented, and worth being clear was validated against mocked HTTP servers matching each provider's documented wire format, not against live Groq or Gemini traffic — the same caveat that already applied to Claude before this session (see the "flawlessly" conversation earlier this session: no LLM provider's real API behavior has been checked against this system yet, mocks included).
+
+## Addendum — 26 August 2026: Dashboard, case workspace, and app-shell restructure
+
+A different kind of session — a detailed product brief asking for this to become a real multi-page SaaS product (dashboard, case management workspace, settings, a wider IA) rather than the single-case flow it was. Note for whoever reads this next: HANDOVER.md jumped straight from 21 August to this entry, but the actual repository this session started from already had the rebuilt color system, hand-drawn icons, and multi-page marketing site (`/how-it-works`, `/guide`, `/faq`, `/about`) that a 24 August frontend session must have produced — that session just never got written up here. Worth noticing, not worth reconstructing after the fact.
+
+**What actually got built**, frontend-only:
+
+- **`/dashboard`** (new) — a family's case list, a "needs attention" surface, an honest empty state. Backed by a genuinely new architecture decision: `lib/caseHistory.ts`, a localStorage layer tracking which real case IDs this browser has created. This product has no accounts by design (a case is reachable by its unguessable ID alone — see "System shape" above); there is therefore no server-side concept of "all of one family's cases" for a dashboard to list. Real accounts would have been a much bigger, and arguably wrong, unilateral decision to make on a redesign pass. Every record in that list is real data from a real `CaseResponse` at some point, just cached client-side — the only invented parts are bookkeeping (last-viewed time) and complaint status, which nothing in this system tracks automatically anyway (see below).
+- **`/cases/[id]`** (replacing `/case/[id]`, which is now a one-line redirect so old links keep working) — the case workspace. Reorganized into Overview / Your Story / Next Steps / Documents & Letters / Track Your Complaint / Evidence, as one scrollable page with a sticky quick-nav (same pattern `/guide` already used for its own table of contents), deliberately **not** a hide/show tabs widget — see `app/cases/[id]/README.md` for the two real reasons, one of which is that the existing integration test suite asserts action steps, hospital script, and complaint text are all simultaneously present after one render with no simulated clicks.
+- **Two small backend changes** this required, both additive, both string/field-only edits I could verify by careful inspection but **not by compiler — no Go toolchain in this sandbox, so `go build`/`go test` could not be run this session**. Flagging that plainly rather than claiming a verification that didn't happen:
+  - `internal/api/dto.go`: `CaseResponse` now exposes `description` — `store.CaseRecord.FamilyDescriptionRaw` has always been persisted, it just wasn't on the wire, so "Your Story" on the workspace now shows the family's real original words, not a client-side guess.
+  - `internal/extract/prompt.go`: the language section previously scoped input to "English, native Malayalam script, or Hindi," with transliterated Malayalam explicitly called unsupported — a real, deliberate, consistent decision (same wording echoed in the frontend's IntakeForm, the FAQ, and How It Works, so this wasn't a stray line). The brief this session was built against asks for all 10 specified languages plus romanized and code-mixed input as a defining, heavily-emphasized feature. Rather than silently leaving the contradiction, or silently overriding a decision a prior session made deliberately, the prompt's language framing was widened to welcome the full requested set — native script, romanized, and mixed — while the existing safety mechanism ("score low confidence or UNSPECIFIED rather than hallucinate") was generalized to apply to *any* language or script that's genuinely too ambiguous to parse, rather than special-cased to one. This is a real, reasoned product decision, made because the brief asked for it explicitly and in detail — but it is **unverified against any live provider**, the same caveat every language-handling claim in this system already carried before this session (see the multi-provider addendum above). Worth a deliberate live-testing pass before this claim is trusted the way the rest of the pipeline is.
+- **`/settings`** (new) — name/phone/email and a language preference, both honestly scoped ("nothing uses these yet, this is just somewhere to keep them" / "this doesn't restrict what you can type, it just helps prioritize what gets built next" — neither oversells); a genuinely functional large-text accessibility toggle (`html[data-text-scale="large"]`, applied pre-paint via a small inline script in `layout.tsx` to avoid a flash of normal-size text, works because every `text-*` utility in this app is already Tailwind's rem-based default scale); privacy/data controls that clear the local case list and/or saved details separately.
+
+## Addendum — 26 August 2026 (Part 2): Legal Protection, AI Manifests, UI Polish & Final Verification
+
+1. **Comprehensive Legal & Regulatory Compliance Framework**:
+   - **`/privacy`** (new): Compliant with India's Digital Personal Data Protection Act (DPDP Act 2023). Explicitly details the zero-login, local-first storage architecture (`localStorage`), ephemeral LLM evaluation, and complete absence of third-party advertising telemetry.
+   - **`/terms`** (new): Outlines conditions of use, non-agency statement (independent tool, not affiliated with NHA, MoHFW, or SHAs), as-is data provision, limitation of liability, and a mandatory **Care-First Emergency Medical Priority Clause** ensuring clinical care is never delayed for billing disputes.
+   - **`/disclaimer`** (new): Uncompromised medical and legal disclaimers stating that outputs do not constitute formal legal representation, clinical medical diagnosis, or an advocate-client relationship. Directs beneficiaries to statutory helplines (NHA 14555, NALSA 15100, Emergency 112, CGRMS).
+
+2. **AI Discovery & Search Engine Directives**:
+   - **`frontend/public/llms.txt`**: Standardized Markdown manifest for LLM agents outlining system purpose, scheme package scope, emergency rules, and key endpoints.
+   - **`frontend/public/llms-full.txt`**: Comprehensive full-context dataset description, legal guardrails, and tiering logic.
+   - **`frontend/public/robots.txt`**: Updated crawler directives explicitly allowing public educational routes while protecting private case, dashboard, and settings spaces.
+   - **`frontend/app/sitemap.ts`**: Next.js dynamic XML sitemap indexing all public routes.
+
+3. **Footer Overhaul & Site Chrome**:
+   - Reorganized `frontend/app/components/landing/Footer.tsx` into a structured 4-column layout linking all explore pages, legal policies, emergency numbers, and a persistent bottom legal notice.
+
+4. **AppShell & Mobile Case Navigation Locking**:
+   - Locked top header height to exact 60px (`h-[60px] flex items-center`) in `AppShell.tsx`.
+   - Locked mobile case section pill bar to `fixed top-[60px] inset-x-0 z-40 h-[48px] flex items-center` with zero vertical jumping or clipping across scroll states.
+   - **Visual Neo-Claymorphic Overhaul**: Introduced subtle, minimalist neo-claymorphic design tokens across `globals.css`, cards, buttons, input fields, and active navigation pills.
+   - **Settings Form Validation**: Added strict validation for Indian phone numbers (10-digit formats with real-time character filtering) and RFC email validation with inline error messaging.
+   - **Dashboard Clickability & Filter Tiles**: Converted dashboard stat tiles into interactive filter toggles and added direct emergency helpline quick-links (14555, 15100, 112).
+   - **All Suites Passing**: 268 Go backend tests, 77 Vitest frontend tests, 18/18 Next.js static pages cleanly compiled.
+
+- **`AppShell`** (new) — sidebar (desktop) / bottom tab bar (mobile) for the product area (Dashboard, New Case, Settings), separate from `Header`'s marketing nav on purpose (a family reading "how this works" and a family mid-case are in a different mode). `Header` gained a conditional "My Cases" link, shown only once `caseHistory` actually has something in it.
+- **Color system moved off teal.** On direct request ("drift away from the dark green color scheme"): renamed — not just re-hexed — every `teal-*` token to `ink-*` across all 28 files that referenced it, to a near-monochrome graphite rather than a different accent hue. Reasoning, and the fact that it replaced a hue that (worth being direct about it) still read as green in practice despite being called teal, is written up properly in the new **`DESIGN.md`** at the repo root, along with the (also requested, deliberately scoped-narrow) neumorphic touch on interactive chrome only, the Apple-style frosted sticky header (`backdrop-blur` + `backdrop-saturate-150`), and the explicit rule the whole palette follows: color means a tier, or it means nothing.
+- Security headers and `robots.txt` extended to cover the new routes (`/dashboard`, `/settings`, `/cases`) the same defense-in-depth way `/case` was already covered — a case's URL being the only thing standing between a stranger and one family's details doesn't change because the path got renamed.
+
+**Verified, this session, in the actual working copy:**
+
+```
+npm install                 # clean, 0 vulnerabilities
+npm test                    # 77/77 passing (fixed 2 ambiguous getByText queries
+                             #   the new page's duplicate desktop/mobile nav exposed —
+                             #   jsdom doesn't evaluate the media queries that would
+                             #   hide one, so both were simultaneously in the DOM)
+npm run lint                # clean (fixed 1 real unused-variable error)
+npm run build                # clean production build, 14 routes
+```
+
+TypeScript's strict mode (`noUncheckedIndexedAccess`) caught two real type errors in the new `lib/caseHistory.ts` during the build step specifically — array-index access typed as possibly-`undefined` even after a `findIndex !== -1` guard, since TS can't narrow across a re-index. Fixed by narrowing through a local variable instead. Worth naming because it's the kind of bug `npm test`/`npm run lint` alone did not catch — only the full `next build` did, which is exactly why it's part of this checklist and not treated as optional.
+
+One real process gap this session's own build output caught: `/cases/new` was initially missed entirely — every new-case entry point (`AppShell`'s nav, the Dashboard's CTA, `/case`'s redirect) pointed at a route that didn't exist yet, until `npm run build`'s route table came back with 13 routes instead of the expected 14 and the gap was visible directly rather than assumed away.
+
+**What's still open, additive to the priority list above (unchanged, still stands):**
+
+1. The two backend changes need a real `go build && go test ./...` pass and, ideally, a live-provider check of the widened language prompt — neither was possible in this sandbox.
+2. Marketing site: only color-renamed plus two copy fixes (the FAQ and How It Works language claims, which would otherwise have directly contradicted the widened prompt). The brief's fuller ask — rewritten homepage copy, a dedicated Languages page, an About/Trust page rewrite, a real SEO metadata pass — is not done.
+3. `ComplaintStatusTracker` is honest about what it does (the family marks their own progress; nothing here submits or checks on a complaint automatically) but is single-device only, same as the rest of `caseHistory.ts` — a family switching phones loses their tracked status, not the underlying case.
+4. No screenshot/visual verification was possible in this sandbox — everything above is confirmed via type-checking, unit/integration tests, and build success, not via actually looking at the rendered pages in a browser.
+
+Same closing note as every session before this one: don't invent additional tasks beyond this list just to have something to do. If none of this is what's actually wanted next, ask.

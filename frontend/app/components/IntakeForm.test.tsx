@@ -21,6 +21,7 @@ vi.mock("@/lib/api", async () => {
 beforeEach(() => {
   pushMock.mockReset();
   createCaseMock.mockReset();
+  window.localStorage.clear();
 });
 
 describe("IntakeForm", () => {
@@ -58,7 +59,14 @@ describe("IntakeForm", () => {
   });
 
   it("submits a valid description and navigates to the resulting case page", async () => {
-    createCaseMock.mockResolvedValueOnce({ id: "case-123" });
+    createCaseMock.mockResolvedValueOnce({
+      id: "case-123",
+      outcome: "green",
+      description: "My mother needs her gallbladder removed, hospital says our card won't cover it.",
+      care_first_message: "Get treatment first. Dispute the money after. Always.",
+      disclaimer: "This is guidance, not a legal or medical ruling.",
+      tier_message: "This looks like a covered package.",
+    });
     const user = userEvent.setup();
     render(<IntakeForm />);
 
@@ -67,8 +75,35 @@ describe("IntakeForm", () => {
     await user.type(screen.getByLabelText(/happening at the hospital/i), description);
     await user.click(screen.getByRole("button", { name: /get help now/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/case/case-123"));
+    // Case workspace now lives at /cases/:id (see app/cases/[id]/page.tsx);
+    // /case/:id redirects there for old links rather than hosting the
+    // page itself — see app/case/[id]/page.tsx.
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/cases/case-123"));
     expect(createCaseMock).toHaveBeenCalledWith(description);
+  });
+
+  it("saves the created case to this browser's local history so it appears on the Dashboard", async () => {
+    createCaseMock.mockResolvedValueOnce({
+      id: "case-456",
+      outcome: "amber",
+      description: "A description long enough to pass client-side validation.",
+      care_first_message: "Get treatment first. Dispute the money after. Always.",
+      disclaimer: "This is guidance, not a legal or medical ruling.",
+      tier_message: "Needs one more check.",
+    });
+    const user = userEvent.setup();
+    render(<IntakeForm />);
+
+    await user.type(
+      screen.getByLabelText(/happening at the hospital/i),
+      "A description long enough to pass client-side validation.",
+    );
+    await user.click(screen.getByRole("button", { name: /get help now/i }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalled());
+    const stored = JSON.parse(window.localStorage.getItem("pmjay-advocate:case-history:v1") ?? "[]");
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ id: "case-456", outcome: "amber" });
   });
 
   it("on an ApiError with fallback guidance, shows both the error and the fallback text — never silently drops the fallback", async () => {

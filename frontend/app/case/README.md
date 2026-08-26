@@ -1,5 +1,16 @@
 # `frontend/app/case`
 
-A pure Next.js App Router namespace — this folder itself has no `page.tsx` and renders nothing on its own. `/case` is not a real route; it exists only so `[id]/` can define the dynamic `/case/:id` route. See `frontend/app/case/[id]/README.md` for the actual page.
+Legacy namespace. `/case` (singular) used to host the whole case-detail
+experience; it now only holds two redirect shims to `/cases` (plural),
+kept so that any bookmarked or previously-shared `/case/:id` link keeps
+working (a case's URL is the only way to reach it — no login, see
+`../../ARCHITECTURE.md` — so an old link has to keep resolving).
 
-If a genuine `/case` index page is ever needed (a list of a family's past cases, say — nothing in this build persists a way to look that up without knowing the exact ID, see `backend/internal/store/README.md`'s note on case IDs being effectively bearer credentials), it would live directly in this folder as `page.tsx`, alongside the `[id]/` subfolder, not inside it.
+- `page.tsx` — redirects `/case` → `/cases/new`.
+- `[id]/page.tsx` — redirects `/case/:id` → `/cases/:id`.
+
+The actual case workspace, and the note this file used to end on about
+a `/case` index page being impossible without a way to look up a
+family's past cases — now solved by `frontend/lib/caseHistory.ts`'s
+local, no-login case list — both live under `frontend/app/cases/`
+instead. See `frontend/app/cases/[id]/README.md`.

@@ -85,7 +85,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		Store:     fileStore,
 		Logger:    logger,
 	}
-	handler := api.NewRouter(server, cfg.AllowedOrigins, cfg.RateLimitPerMinute)
+	handler := api.NewRouter(server, cfg.AllowedOrigins, cfg.RateLimitPerMinute, cfg.RateLimitPerHour, cfg.MaxConcurrentLLM)
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,

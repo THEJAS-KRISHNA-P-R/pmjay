@@ -15,10 +15,10 @@ export default function AboutPage() {
     <div className="min-h-screen flex flex-col bg-sand-50">
       <Header />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 sm:px-8 lg:px-10 pt-8 sm:pt-12 lg:pt-16 pb-12 sm:pb-16 lg:pb-24 space-y-14 sm:space-y-16 animate-fade-in">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-8 lg:px-10 pt-6 sm:pt-12 lg:pt-16 pb-12 sm:pb-16 lg:pb-24 space-y-12 sm:space-y-16 animate-fade-in">
         <div className="max-w-2xl space-y-3.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Our purpose</p>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight-display text-teal-950">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-700">Our purpose</p>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight-display text-ink-950">
             About PMJAY Advocate
           </h1>
           <p className="text-base sm:text-lg leading-relaxed text-sand-700 font-medium">
@@ -35,7 +35,7 @@ export default function AboutPage() {
           </h2>
           <div className="grid gap-5 sm:grid-cols-3">
             <div className="card p-6 space-y-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.05)]">
                 <IconHeart className="h-4 w-4" />
               </div>
               <h3 className="font-bold text-sand-900">Care First, Always</h3>
@@ -46,7 +46,7 @@ export default function AboutPage() {
             </div>
 
             <div className="card p-6 space-y-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.05)]">
                 <IconLock className="h-4 w-4" />
               </div>
               <h3 className="font-bold text-sand-900">Zero Personal Data Required</h3>
@@ -57,7 +57,7 @@ export default function AboutPage() {
             </div>
 
             <div className="card p-6 space-y-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.05)]">
                 <IconScale className="h-4 w-4" />
               </div>
               <h3 className="font-bold text-sand-900">Grounded in Real Rates</h3>
@@ -86,7 +86,7 @@ export default function AboutPage() {
               href="https://cgrms.pmjay.gov.in"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-teal-800 underline hover:opacity-80"
+              className="font-bold text-ink-800 underline hover:opacity-80"
             >
               cgrms.pmjay.gov.in
             </a>

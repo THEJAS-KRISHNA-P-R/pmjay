@@ -1,26 +1,30 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import CasePage from "./page";
+import CaseWorkspacePage from "./page";
 import type { CaseResponse } from "@/lib/types";
 import { ApiError } from "@/lib/api";
 
 // This is the one test in the suite that renders the real, full page
-// component tree (Header + CareFirstBanner + TierPanel + conditionally
+// component tree (AppShell + CareFirstBanner + TierPanel + conditionally
 // HandoffPanel/ActionSteps/CopyableTextBox/EvidenceForm) exactly as
-// app/case/[id]/page.tsx composes them, with only the network boundary
+// app/cases/[id]/page.tsx composes them, with only the network boundary
 // mocked. Every other test in this suite exercises one component in
 // isolation; this one exists specifically to catch a bug in how they're
 // wired together, which isolated tests structurally cannot catch --
 // e.g. a prop passed under the wrong name, or a conditional that hides
 // a component that should be showing. See docs/TESTING.md for why this
 // stands in for a true browser-driven e2e test in this environment.
+//
+// Moved here from app/case/[id]/page.test.tsx when the workspace moved
+// to /cases/[id] — see app/case/[id]/page.tsx for the redirect that now
+// lives at the old path instead.
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "case-123" }),
-  // Header (rendered at the top of this page) calls usePathname() to
-  // highlight the active nav link — without this, the mock module
-  // shadows the real export entirely and Header throws.
-  usePathname: () => "/case/case-123",
+  // AppShell (rendered at the top of this page) calls usePathname() to
+  // highlight the active nav item — without this, the mock module
+  // shadows the real export entirely and AppShell throws.
+  usePathname: () => "/cases/case-123",
 }));
 
 const getCaseMock = vi.fn();
@@ -44,12 +48,13 @@ function baseCase(overrides: Partial<CaseResponse> = {}): CaseResponse {
 
 beforeEach(() => {
   getCaseMock.mockReset();
+  window.localStorage.clear();
 });
 
-describe("CasePage (integration)", () => {
+describe("CaseWorkspacePage (integration)", () => {
   it("shows a loading state, then the loaded case, without ever showing both at once", async () => {
     getCaseMock.mockResolvedValue(baseCase());
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
 
     expect(screen.getByRole("status")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/This looks like a covered package/)).toBeInTheDocument());
@@ -64,7 +69,7 @@ describe("CasePage (integration)", () => {
       getCaseMock.mockResolvedValue(
         baseCase({ outcome, handoff_summary: outcome === "handoff" ? "Summary" : undefined }),
       );
-      const { unmount } = render(<CasePage />);
+      const { unmount } = render(<CaseWorkspacePage />);
       await waitFor(() =>
         expect(
           screen.getByText("Get treatment first. Dispute the money after. Always."),
@@ -74,10 +79,37 @@ describe("CasePage (integration)", () => {
     }
   });
 
+  it("renders the disclaimer whenever the backend sends one, directly alongside the care-first message", async () => {
+    getCaseMock.mockResolvedValue(
+      baseCase({ disclaimer: "This is guidance, not a legal or medical ruling." }),
+    );
+    render(<CaseWorkspacePage />);
+    await waitFor(() =>
+      expect(screen.getByText("This is guidance, not a legal or medical ruling.")).toBeInTheDocument(),
+    );
+  });
+
+  it("renders a Your Story section with the family's own words when the backend sends a description, and omits it when there isn't one", async () => {
+    getCaseMock.mockResolvedValue(
+      baseCase({ description: "My mother's leg was fractured and the hospital billed us for surgery." }),
+    );
+    const { unmount } = render(<CaseWorkspacePage />);
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Your story" })).toBeInTheDocument());
+    expect(
+      screen.getByText("My mother's leg was fractured and the hospital billed us for surgery."),
+    ).toBeInTheDocument();
+    unmount();
+
+    getCaseMock.mockResolvedValue(baseCase({ description: undefined }));
+    render(<CaseWorkspacePage />);
+    await waitFor(() => expect(screen.getByText(/This looks like a covered package/)).toBeInTheDocument());
+    expect(screen.queryByText("Your story")).not.toBeInTheDocument();
+  });
+
   it("renders HandoffPanel only for a handoff outcome, never for the other four", async () => {
     for (const outcome of ["green", "amber", "red", "mixed"] as const) {
       getCaseMock.mockResolvedValue(baseCase({ outcome }));
-      const { unmount } = render(<CasePage />);
+      const { unmount } = render(<CaseWorkspacePage />);
       await waitFor(() => expect(screen.getByText(/This looks like a covered package|tier message/i)).toBeTruthy());
       expect(screen.queryByText("Free legal help, right now")).not.toBeInTheDocument();
       unmount();
@@ -86,7 +118,7 @@ describe("CasePage (integration)", () => {
     getCaseMock.mockResolvedValue(
       baseCase({ outcome: "handoff", handoff_summary: "Family's case summary for NALSA." }),
     );
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
     await waitFor(() =>
       expect(screen.getByText("Free legal help, right now")).toBeInTheDocument(),
     );
@@ -95,14 +127,16 @@ describe("CasePage (integration)", () => {
 
   it("renders action steps and copyable boxes only when the backend actually sent them", async () => {
     getCaseMock.mockResolvedValue(baseCase());
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
     await waitFor(() => expect(screen.getByText(/This looks like a covered package/)).toBeInTheDocument());
     expect(screen.queryByText("What to do right now")).not.toBeInTheDocument();
     expect(screen.queryByText("Exact words to use at the desk")).not.toBeInTheDocument();
     expect(screen.queryByText("Draft complaint, ready to review")).not.toBeInTheDocument();
+    // No complaint text this time either, so there's nothing to track.
+    expect(screen.queryByText("Track your complaint")).not.toBeInTheDocument();
   });
 
-  it("renders action steps, hospital script, and complaint text when the backend sends all three", async () => {
+  it("renders action steps, hospital script, complaint text, and the complaint tracker when the backend sends all three", async () => {
     getCaseMock.mockResolvedValue(
       baseCase({
         action_steps: ["Ask for the itemised bill", "Call the PMJAY helpline"],
@@ -110,18 +144,19 @@ describe("CasePage (integration)", () => {
         complaint_text: "To whom it may concern, I am writing to formally dispute...",
       }),
     );
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
 
     await waitFor(() => expect(screen.getByText("What to do right now")).toBeInTheDocument());
     expect(screen.getByText("Ask for the itemised bill")).toBeInTheDocument();
     expect(screen.getByText("Exact words to use at the desk")).toBeInTheDocument();
     expect(screen.getByText("Draft complaint, ready to review")).toBeInTheDocument();
     // The complaint box carries a helper line the hospital-script box
-    // does not (see app/case/[id]/page.tsx) -- this is the one thing
+    // does not (see app/cases/[id]/page.tsx) -- this is the one thing
     // that actually distinguishes the two CopyableTextBox instances from
     // each other, so it's worth its own assertion rather than assuming
     // two matching titles means both are correctly configured.
     expect(screen.getByText(/Submit this yourself/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Track your complaint" })).toBeInTheDocument();
   });
 
   it("renders the case document download link with the correct case id wired through", async () => {
@@ -129,10 +164,10 @@ describe("CasePage (integration)", () => {
     // catch (see the file-level comment above): CaseDocumentPanel takes
     // caseId as a prop, and an isolated component test (CaseDocumentPanel.test.tsx)
     // can only confirm the component behaves correctly given *some* id
-    // — it can't catch CasePage itself passing the wrong one, or none
+    // — it can't catch the page itself passing the wrong one, or none
     // at all. This is the one test that actually exercises that wiring.
     getCaseMock.mockResolvedValue(baseCase({ id: "case-456" }));
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
     await waitFor(() => expect(screen.getByText(/This looks like a covered package/)).toBeInTheDocument());
 
     const link = screen.getByRole("link", { name: /download pdf/i });
@@ -141,11 +176,11 @@ describe("CasePage (integration)", () => {
 
   it("shows an error state with a PMJAY helpline fallback when the case fails to load, and no tier content", async () => {
     getCaseMock.mockRejectedValue(new ApiError("Case not found.", 404));
-    render(<CasePage />);
+    render(<CaseWorkspacePage />);
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Case not found.");
-    // Header renders its own "Helpline: 14555" link too, so this query
+    // AppShell renders its own "14555" helpline link too, so this query
     // is deliberately scoped to inside the error alert -- an unscoped
     // query here is exactly the ambiguity that caught a real gap when
     // this test was first written (both links legitimately match

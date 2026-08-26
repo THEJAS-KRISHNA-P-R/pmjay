@@ -14,10 +14,10 @@ export default function FaqPage() {
     <div className="min-h-screen flex flex-col bg-sand-50">
       <Header />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 sm:px-8 lg:px-10 pt-8 sm:pt-12 lg:pt-16 pb-12 sm:pb-16 lg:pb-24 space-y-10 animate-fade-in">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-8 lg:px-10 pt-6 sm:pt-12 lg:pt-16 pb-12 sm:pb-16 lg:pb-24 space-y-10 animate-fade-in">
         <div className="space-y-3.5 max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">Questions &amp; answers</p>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight-display text-teal-950">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-700">Questions &amp; answers</p>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight-display text-ink-950">
             Frequently Asked Questions
           </h1>
           <p className="text-base sm:text-lg leading-relaxed text-sand-700 font-medium">

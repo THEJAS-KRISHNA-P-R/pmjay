@@ -25,10 +25,18 @@ frontend/next-env.d.ts
 backend/.env
 frontend/.env.local
 
-# OS
+# OS & Scratch
 .DS_Store
 Thumbs.db
+*.log
+*.zip
+coverage/
+.turbo/
+.tempmediaStorage/
+.system_generated/
+scratch/
 
 # Editor
 .vscode/
 .idea/
+

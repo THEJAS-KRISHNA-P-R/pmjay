@@ -11,7 +11,7 @@ export function CaseDocumentPanel({ caseId }: { caseId: string }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
         <div className="flex items-start gap-4">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-800"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.06)]"
             aria-hidden="true"
           >
             <IconFileText className="h-5 w-5" />
@@ -30,7 +30,7 @@ export function CaseDocumentPanel({ caseId }: { caseId: string }) {
           href={caseDocumentUrl(caseId)}
           target="_blank"
           rel="noopener noreferrer"
-          className="tap-target inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-700 px-6 py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-teal-800 hover:shadow-md active:scale-95 self-start sm:self-auto shrink-0"
+          className="btn-primary tap-target px-6 py-3.5 text-sm font-bold self-start sm:self-auto shrink-0"
         >
           <span>Download PDF</span>
           <IconDownload className="h-4 w-4" />

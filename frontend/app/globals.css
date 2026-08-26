@@ -28,29 +28,38 @@
   --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 
-  /* Primary — deep teal, pulled toward "ink" rather than "spa." Reads as
-     calm and trustworthy without tipping into generic wellness-app
-     brightness — deliberately lower saturation and a deeper 600/700 than
-     a typical marketing teal, so it holds up as a serious text and
-     button color carrying real legal/financial content, not just a
-     decorative wash. */
-  --color-teal-50: #f0faf9;
-  --color-teal-100: #daf1ee;
-  --color-teal-200: #b6e3dc;
-  --color-teal-300: #86cec2;
-  --color-teal-400: #57b0a2;
-  --color-teal-500: #368f82;
-  --color-teal-600: #26746a; /* primary buttons, links, icon strokes */
-  --color-teal-700: #205f57;
-  --color-teal-800: #1d4d47;
-  --color-teal-900: #1a3f3a;
-  --color-teal-950: #0c2321;
+  /* Primary — "ink," a near-monochrome graphite with the faintest cool
+     undertone, not a hue at all really. This replaces an earlier deep
+     teal that, in practice, still read as a shade of green — worth
+     naming plainly rather than glossing over, since the whole point of
+     this palette is to stop competing with tier-green for the same
+     part of the color wheel. This isn't one accent hue swapped for
+     another; it's a move from hue to near-neutral: color on this
+     product should mean something (a tier), so the chrome around it —
+     buttons, links, nav — now carries almost none, the same restraint
+     Apple's own interfaces lean on (content and system status get
+     color; navigation chrome mostly doesn't). Still just warm enough to
+     sit naturally on the sand neutrals below rather than reading as a
+     cold, foreign gray. */
+  --color-ink-50: #f4f5f6;
+  --color-ink-100: #e7e9eb;
+  --color-ink-200: #cdd1d6;
+  --color-ink-300: #a8afb8;
+  --color-ink-400: #7c8590;
+  --color-ink-500: #5c6570;
+  --color-ink-600: #3d444d; /* primary buttons, links, icon strokes */
+  --color-ink-700: #2f353c;
+  --color-ink-800: #24282e;
+  --color-ink-900: #1a1d21;
+  --color-ink-950: #0f1113;
 
   /* Accent — marigold, deepened the same way (an "ember" rather than a
      bright craft-supply yellow) so it reads as a considered accent, not
      a stock warning color borrowed from a UI kit. Used sparingly: small
      highlights, a badge here and there. Never a large surface, so it
-     never competes with the primary teal for attention. */
+     never competes with the primary ink — or, more to the point, with
+     the tier colors below, which are the only color in this app that's
+     actually supposed to mean something. */
   --color-marigold-50: #fdf8ec;
   --color-marigold-100: #f9ecc9;
   --color-marigold-200: #f3d68d;
@@ -110,6 +119,27 @@
 
   --ease-out-quick: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Soft neo-claymorphic & dual-tone shadows — a light, tactile, minimalist
+     depth treatment on cards, buttons, active nav items, and tiles.
+     Combines soft multi-layered ambient drop shadows with crisp top inner highlights
+     (inset 0 1px 1px rgba(255, 255, 255, 0.95)) and subtle hairline borders.
+     Reduced by 30% from dramatic values. */
+  --shadow-soft-raised: 0 7px 20px -2px rgba(42, 38, 33, 0.105), 0 2px 6px -1px rgba(42, 38, 33, 0.07), inset 0 1px 1px 0 rgba(255, 255, 255, 1), inset 0 -1px 3px 0 rgba(42, 38, 33, 0.056);
+  --shadow-soft-pressed: inset 0 3px 7px 0 rgba(42, 38, 33, 0.14), inset 0 -1px 3px 0 rgba(255, 255, 255, 0.56);
+
+  --shadow-clay-card: 0 11px 34px -4px rgba(42, 38, 33, 0.154), 0 4px 11px -2px rgba(42, 38, 33, 0.098), inset 0 1px 1px 0 rgba(255, 255, 255, 1), inset 0 -4px 8px 0 rgba(42, 38, 33, 0.07);
+  --shadow-clay-card-hover: 0 17px 45px -6px rgba(42, 38, 33, 0.196), 0 7px 17px -4px rgba(42, 38, 33, 0.126), inset 0 2px 2px 0 rgba(255, 255, 255, 1), inset 0 -6px 11px 0 rgba(42, 38, 33, 0.098);
+
+  --shadow-clay-btn-primary: 0 8px 25px -3px rgba(4, 120, 87, 0.42), 0 4px 10px -1px rgba(4, 120, 87, 0.28), inset 0 1px 1px 0 rgba(255, 255, 255, 0.55), inset 0 -3px 6px 0 rgba(0, 0, 0, 0.196);
+  --shadow-clay-btn-primary-hover: 0 11px 34px -4px rgba(4, 120, 87, 0.476), 0 5px 13px -2px rgba(4, 120, 87, 0.336), inset 0 1px 2px 0 rgba(255, 255, 255, 0.65), inset 0 -4px 7px 0 rgba(0, 0, 0, 0.224);
+  --shadow-clay-btn-primary-active: inset 0 3px 7px 0 rgba(0, 0, 0, 0.266), 0 1px 3px 0 rgba(4, 120, 87, 0.196);
+
+  --shadow-clay-btn-secondary: 0 7px 20px -2px rgba(42, 38, 33, 0.126), 0 3px 7px -1px rgba(42, 38, 33, 0.084), inset 0 1px 1px 0 rgba(255, 255, 255, 1), inset 0 -3px 6px 0 rgba(42, 38, 33, 0.07);
+  --shadow-clay-btn-secondary-hover: 0 10px 25px -3px rgba(42, 38, 33, 0.168), 0 4px 10px -2px rgba(42, 38, 33, 0.112), inset 0 2px 2px 0 rgba(255, 255, 255, 1), inset 0 -4px 7px 0 rgba(42, 38, 33, 0.084);
+  --shadow-clay-btn-secondary-active: inset 0 2px 6px 0 rgba(42, 38, 33, 0.14), inset 0 -1px 3px 0 rgba(255, 255, 255, 0.49);
+
+  --shadow-clay-pill-active: 0 7px 20px -2px rgba(42, 38, 33, 0.126), 0 3px 7px -1px rgba(42, 38, 33, 0.084), inset 0 1px 1px 0 rgba(255, 255, 255, 1), inset 0 -3px 6px 0 rgba(42, 38, 33, 0.07);
+
   --animate-fade-in: fade-in 0.35s var(--ease-out-quick) both;
   --animate-fade-in-up: fade-in-up 0.4s var(--ease-out-quick) both;
 
@@ -137,15 +167,36 @@
 /* Base                                                                 */
 /* ------------------------------------------------------------------ */
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     border-color: var(--color-sand-200);
+    box-sizing: border-box;
   }
 
   html {
     scroll-behavior: smooth;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  /* Large-text accessibility mode, toggled on Settings and persisted to
+     localStorage (see app/settings/page.tsx). Every text-* utility in
+     this app is Tailwind's default rem scale, which is relative to the
+     root font-size — so this one rule scales all of it proportionally
+     rather than requiring a parallel "large" variant of every type
+     class. Applied via a data attribute (not a class) set on <html> by
+     a small inline script in layout.tsx, before first paint, so there
+     is no flash of normal-size text while a client component catches
+     up. */
+  html[data-text-scale="large"] {
+    font-size: 113%;
   }
 
   body {
+    max-width: 100vw;
+    overflow-x: clip;
+    position: relative;
     background-color: var(--color-sand-50);
     color: var(--color-sand-900);
     font-family: var(--font-sans);
@@ -154,8 +205,8 @@
   }
 
   ::selection {
-    background-color: var(--color-teal-200);
-    color: var(--color-teal-950);
+    background-color: var(--color-ink-200);
+    color: var(--color-ink-950);
   }
 
   /* One visible, high-contrast focus style everywhere — never removed,
@@ -163,7 +214,7 @@
      A family filling this out at a hospital desk may be tabbing
      through on a keyboard-only kiosk browser. */
   :focus-visible {
-    outline: 2.5px solid var(--color-teal-600);
+    outline: 2.5px solid var(--color-ink-600);
     outline-offset: 2px;
     border-radius: 2px;
   }
@@ -184,34 +235,38 @@
 /* Shared component classes                                            */
 /* ------------------------------------------------------------------ */
 @layer components {
-  /* Default surface for cards, panels, list items — solid, not glass.
-     A flat sand-tinted white with a hairline border and a soft shadow
-     reads as calmer and more legible than translucency, and it's what
-     almost everything in this app should use. */
+/* Default surface for cards, panels, list items — subtle neo-claymorphic elevation.
+      Combines a soft outer drop shadow, hairline border, and crisp top inner highlight. */
   .card {
     background-color: white;
-    border: 1px solid var(--color-sand-200);
-    border-radius: 1rem;
-    box-shadow: 0 1px 2px rgba(42, 38, 33, 0.04), 0 1px 3px rgba(42, 38, 33, 0.03);
+    border: 1px solid rgba(42, 38, 33, 0.084);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-clay-card);
   }
 
-  /* No glassmorphism anywhere in this app — a deliberate, cross-project
-     choice (matches the house style set on other production apps: no
-     blur-and-translucency layering). Every surface is solid so it reads
-     as a serious tool handling real coverage decisions, not a trendy
-     template. The sticky header and the hero intake "card" both use
-     plain `.card` plus a stronger shadow/border for weight instead of
-     translucency. */
+  /* Interactive card with smooth tactile hover elevation and spring lift */
+  .card-interactive {
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-interactive:hover {
+    transform: translateY(-2.5px);
+    box-shadow: var(--shadow-clay-card-hover);
+    border-color: rgba(42, 38, 33, 0.063);
+  }
 
-  /* Small, precise status/category tag — never a full pill, never a
-     bare colored dot. Structural rules only; callers add the semantic
-     color via ordinary bg-, border-, and text- color utilities alongside
-     this class, e.g. `badge bg-teal-50 border-teal-200 text-teal-800`. */
+  /* Silky smooth tab/panel entrance animation */
+  .animate-smooth-fade {
+    animation: smoothFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Small, precise status/category tag */
   .badge {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
-    border-radius: 0.375rem;
+    border-radius: 0.5rem;
     padding: 0.3125rem 0.625rem;
     font-size: 0.6875rem;
     font-weight: 700;
@@ -220,11 +275,10 @@
     border-width: 1px;
     border-style: solid;
     line-height: 1;
+    box-shadow: 0 1px 3px rgba(42, 38, 33, 0.056), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   }
 
-  /* Minimum comfortable tap target on touch devices, per WCAG 2.5.8 and
-     every mobile HIG going. Applied to anything tappable that would
-     otherwise render smaller than 44x44. */
+  /* Minimum comfortable tap target on touch devices */
   .tap-target {
     min-height: 44px;
     min-width: 44px;
@@ -234,52 +288,62 @@
     letter-spacing: -0.02em;
   }
 
+  /* Neo-claymorphic primary button (emerald green with tactile volume) */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.75rem;
-    background-color: var(--color-teal-600);
+    border-radius: 0.875rem;
+    border: 1px solid rgba(4, 120, 87, 0.21);
+    background-color: #047857; /* emerald-700 */
     color: white;
     font-weight: 700;
-    transition: background-color 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
+    box-shadow: var(--shadow-clay-btn-primary);
+    transition: background-color 0.15s var(--ease-out-quick), box-shadow 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
   }
   .btn-primary:hover {
-    background-color: var(--color-teal-700);
+    background-color: #065f46; /* emerald-800 */
+    box-shadow: var(--shadow-clay-btn-primary-hover);
+    transform: translateY(-1px);
   }
   .btn-primary:active {
     transform: scale(0.98);
+    box-shadow: var(--shadow-clay-btn-primary-active);
   }
   .btn-primary:disabled {
     background-color: var(--color-sand-300);
     color: var(--color-sand-600);
+    box-shadow: none;
     cursor: not-allowed;
   }
 
+  /* Neo-claymorphic secondary button (white/sand surface with top inner highlight) */
   .btn-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     border-radius: 0.75rem;
-    border: 1.5px solid var(--color-sand-300);
+    border: 1px solid rgba(42, 38, 33, 0.098);
     background-color: white;
     color: var(--color-sand-800);
     font-weight: 700;
-    transition: border-color 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
+    box-shadow: var(--shadow-clay-btn-secondary);
+    transition: border-color 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick), box-shadow 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
   }
   .btn-secondary:hover {
-    border-color: var(--color-teal-400);
-    background-color: var(--color-teal-50);
+    border-color: rgba(42, 38, 33, 0.098);
+    background-color: var(--color-sand-25);
+    box-shadow: var(--shadow-clay-btn-secondary-hover);
+    transform: translateY(-0.5px);
   }
   .btn-secondary:active {
     transform: scale(0.98);
+    box-shadow: var(--shadow-clay-btn-secondary-active);
   }
 
-  /* Shared text input / textarea treatment — one definition so every
-     form field in the app focuses, disables, and placeholder-colors the
-     same way instead of each component reinventing it. */
+  /* Shared text input / textarea treatment with subtle inset clay depth */
   .field {
     width: 100%;
     border-radius: 1rem;
@@ -288,7 +352,8 @@
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
     color: var(--color-sand-900);
-    transition: border-color 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick);
+    box-shadow: inset 0 2px 4px rgba(42, 38, 33, 0.042), 0 1px 1px rgba(255, 255, 255, 0.9);
+    transition: border-color 0.15s var(--ease-out-quick), box-shadow 0.15s var(--ease-out-quick), background-color 0.15s var(--ease-out-quick);
   }
   .field::placeholder {
     color: var(--color-sand-400);
@@ -298,7 +363,88 @@
   }
   .field:focus {
     outline: none;
-    border-color: var(--color-teal-500);
+    border-color: #047857;
+    box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12), inset 0 1px 3px rgba(42, 38, 33, 0.035);
+  }
+
+  /* Quiet, text-weight action */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    color: var(--color-sand-700);
+    font-weight: 700;
+    transition: background-color 0.15s var(--ease-out-quick), color 0.15s var(--ease-out-quick), transform 0.1s var(--ease-out-quick);
+  }
+  .btn-ghost:hover {
+    background-color: var(--color-sand-100);
+    color: var(--color-sand-900);
+  }
+  .btn-ghost:active {
+    transform: scale(0.98);
+  }
+
+  /* Product-area navigation item — clean pill on active, flat inactive */
+  .app-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.875rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-sand-600);
+    border: 1px solid transparent;
+    transition: background-color 0.12s var(--ease-out-quick), color 0.12s var(--ease-out-quick);
+  }
+  .app-nav-item:hover {
+    background-color: var(--color-sand-100);
+    color: var(--color-sand-900);
+  }
+  .app-nav-item[data-active="true"] {
+    background-color: var(--color-sand-100);
+    color: var(--color-sand-950);
+    border-color: var(--color-sand-200);
+    font-weight: 700;
+  }
+
+  /* Small raised tile — dashboard stat/summary tiles with soft claymorphic depth */
+  .tile-soft {
+    background-color: white;
+    border-radius: 1.125rem;
+    border: 1px solid rgba(42, 38, 33, 0.084);
+    box-shadow: var(--shadow-clay-card);
+    transition: transform 0.2s var(--ease-out-quick), box-shadow 0.2s var(--ease-out-quick), border-color 0.2s var(--ease-out-quick);
+  }
+  .tile-soft:hover {
+    border-color: rgba(42, 38, 33, 0.126);
+    box-shadow: var(--shadow-clay-card-hover);
+  }
+
+  /* In-page quick-nav pill */
+  .section-nav-link {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-sand-600);
+    border: 1px solid transparent;
+    transition: background-color 0.15s var(--ease-out-quick), color 0.15s var(--ease-out-quick), box-shadow 0.15s var(--ease-out-quick);
+  }
+  .section-nav-link:hover {
+    background-color: var(--color-sand-100);
+    color: var(--color-sand-900);
+  }
+  .section-nav-link[aria-current="true"] {
+    background-color: white;
+    color: var(--color-sand-900);
+    border-color: rgba(42, 38, 33, 0.084);
+    box-shadow: var(--shadow-clay-pill-active);
   }
 
   /* Loading-state placeholder for content whose final height is already
@@ -320,6 +466,17 @@
     }
     to {
       background-position: -50% 0;
+    }
+  }
+
+  @keyframes smoothFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 }

@@ -36,10 +36,10 @@ export function CopyableTextBox({
         <button
           type="button"
           onClick={handleCopy}
-          className={`tap-target shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold transition-all active:scale-95 ${
+          className={`btn-secondary tap-target shrink-0 px-5 py-2.5 text-sm font-bold ${
             copied
-              ? "bg-tier-green-text text-white"
-              : "bg-teal-700 text-white hover:bg-teal-800"
+              ? "!bg-emerald-700 !text-white !border-emerald-800 !shadow-[var(--shadow-clay-btn-primary)]"
+              : ""
           }`}
           aria-live="polite"
         >

@@ -1,0 +1,39 @@
+# PMJAY Advocate — Point-of-Denial Legal & Scheme Verification
+
+> PMJAY Advocate is a free, independent, public-interest software tool designed to help Indian families verify hospital coverage refusals and billing disputes under the Ayushman Bharat / Pradhan Mantri Jan Arogya Yojana (AB-PMJAY) government health insurance scheme.
+
+## Core Purpose & Capabilities
+
+- **Point-of-Denial Verification**: Evaluates unstructured hospital billing dispute narratives (English, Malayalam, Hindi, or mixed code) against the National Health Authority (NHA) Health Benefit Package (HBP 2.1 / HBP 2022) master schedule.
+- **5-Tier Structured Outcomes**:
+  - `Green`: Explicitly covered procedure. Provides matched HBP code, indicative tariff, and point-of-denial counter-script.
+  - `Amber`: Ambiguous or close-call match. Prompts for specific clarifying questions to ask the hospital desk.
+  - `Red`: Clearly excluded procedure (cosmetic, OPD routine checkup). Provides clear, non-confrontational explanation.
+  - `Mixed`: Bill contains bundled covered procedures and legitimate uncovered add-ons. Separates what must be cashless from legitimate out-of-pocket charges.
+  - `Handoff`: Illegal detention of patients, extortion, or acute legal distress. Routes to free legal counsel (NALSA Helpline: 15100).
+- **Downloadable Case Documentation**: Produces ready-to-use CGRMS grievance drafts and formal PDFs for hospital administrators.
+- **Privacy First**: Zero accounts, zero server-side identity tracking, local browser storage only.
+
+## Key Rules & Principles
+
+1. **Care First Rule**: Emergency and urgent clinical care must never be delayed for billing disputes.
+2. **Independent Status**: PMJAY Advocate is an independent public-interest software resource and is not affiliated with the National Health Authority (NHA) or State Health Agencies (SHAs).
+3. **Non-Legal/Non-Medical Advice**: Generated counter-scripts are informational and do not replace licensed legal representation or clinical medical judgment.
+
+## Public Site Map
+
+- [Homepage](https://pmjayadvocate.in/): Interactive hospital bill verifier and case evaluator.
+- [How It Works](https://pmjayadvocate.in/how-it-works): Detailed 4-step explanation of the intake, matching, and counter-script engine.
+- [Your Rights Guide](https://pmjayadvocate.in/guide): Plain-language guide to guaranteed patient rights under PMJAY.
+- [FAQ](https://pmjayadvocate.in/faq): Common questions regarding cash deposits, pre-authorisation, and portability.
+- [About](https://pmjayadvocate.in/about): Mission, open-source architecture, and independence pledge.
+- [Privacy Policy](https://pmjayadvocate.in/privacy): DPDP Act 2023 compliance, no-login architecture.
+- [Terms of Service](https://pmjayadvocate.in/terms): Usage conditions and liability limitation.
+- [Legal & Medical Disclaimer](https://pmjayadvocate.in/disclaimer): Medical emergency priority and non-agency notice.
+
+## Key Emergency Contacts
+
+- PMJAY National Toll-Free Helpline: 14555
+- NALSA Free Legal Aid Helpline: 15100
+- National Emergency Number: 112
+- Official Grievance Portal: https://cgrms.pmjay.gov.in

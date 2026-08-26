@@ -11,14 +11,14 @@ export function CareFirstBanner({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-800 via-teal-900 to-teal-950 px-5 py-4 sm:px-6 sm:py-5 text-white shadow-lg animate-fade-in-up"
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ink-800 via-ink-900 to-ink-950 px-5 py-4 sm:px-6 sm:py-5 text-white shadow-lg animate-fade-in-up"
     >
       <div className="relative flex items-start gap-3.5 sm:gap-4">
-        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-teal-100">
+        <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-ink-100">
           <IconAlertTriangle className="h-5 w-5" />
         </div>
         <div className="flex-1 pt-0.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-300">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-300">
             Emergency Priority
           </p>
           <p className="mt-1 text-base sm:text-lg font-bold leading-snug sm:leading-normal text-white">

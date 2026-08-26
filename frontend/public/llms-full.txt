@@ -1,0 +1,51 @@
+# PMJAY Advocate — Full System Context & Specification for LLMs
+
+## Overview
+PMJAY Advocate is an open-source, independent point-of-denial dispute assistant for beneficiaries of the Pradhan Mantri Jan Arogya Yojana (Ayushman Bharat / PMJAY), India's national public health assurance scheme offering ₹5,00,000 per family per year for secondary and tertiary inpatient hospitalisation.
+
+## Problem Statement
+When a family arrives at an empanelled hospital during a medical emergency or planned inpatient admission, hospital billing desks occasionally issue incorrect or illicit verbal denials:
+- Demanding upfront cash deposits for covered procedures.
+- Falsely claiming "PMJAY server is down, pay cash for now".
+- Claiming standard surgical procedures are "uncovered" due to terminology differences.
+- Illegally withholding patient discharge summaries over billing disputes.
+
+Distressed families often lack the clinical knowledge or legal confidence to dispute these assertions in real time.
+
+## Technical Architecture
+
+### 1. Ingestion & Natural Language Normalisation
+- Accepts raw, unstructured patient descriptions in English, Malayalam, Hindi, or mixed code-switching.
+- Extracts clinical keywords, surgical procedures, stated costs, and denial grounds via enterprise LLM tool use.
+
+### 2. Retrieval & Semantic Package Matching
+- Cross-references extracted procedures against a 315-procedure verified subset of the NHA Health Benefit Package (HBP 2.1 / HBP 2022) master schedule.
+- Checks against official exclusion rules (cosmetic procedures, outpatient routine visits, experimental treatments).
+
+### 3. Tier Classification Engine
+- **Tier Green**: Definite package match. Generates exact verbal script for the hospital Ayushman Mitra and a formal grievance template.
+- **Tier Amber**: Ambiguous match (e.g. general laparoscopy without organ specification). Prompts family to ask the hospital desk 1 specific clarifying question.
+- **Tier Red**: Definite exclusion. Explains why the procedure is legitimately out-of-pocket without encouraging frivolous complaints.
+- **Tier Mixed**: Primary surgery is covered, but ancillary item is excluded. Separates the bill so the patient does not pay cash for the surgery.
+- **Tier Handoff**: Acute distress or illegal detention. Directly connects to the National Legal Services Authority (NALSA) 15100 free legal aid network.
+
+### 4. Zero-Storage Privacy Model
+- No user accounts, phone numbers, or passwords.
+- Case records are stored ephemerally and cached strictly on the client device via `localStorage`.
+- Full compliance with India's Digital Personal Data Protection Act (DPDP Act 2023).
+
+## Key Public Routes
+- `/`: Main interactive intake form and showcase.
+- `/how-it-works`: Step-by-step engine breakdown.
+- `/guide`: Patient rights under NHA regulations.
+- `/faq`: Common denial queries answered plainly.
+- `/about`: Independent mission and architecture.
+- `/privacy`: DPDP Act 2023 data disclosures.
+- `/terms`: Terms of service and emergency care clause.
+- `/disclaimer`: Medical, legal, and financial liability disclaimers.
+
+## Statutory Authority Resources
+- National Health Authority (NHA): https://nha.gov.in
+- Central Grievance Redressal Management System (CGRMS): https://cgrms.pmjay.gov.in
+- National Legal Services Authority (NALSA): https://nalsa.gov.in
+- 24/7 PMJAY Helpline: 14555

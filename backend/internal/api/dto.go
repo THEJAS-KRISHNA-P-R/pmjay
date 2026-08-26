@@ -11,9 +11,10 @@ type IntakeRequest struct {
 // fetched later — the same shape either way, so the frontend has one
 // type to render regardless of which endpoint produced it.
 type CaseResponse struct {
-	ID       string `json:"id"`
-	Outcome  string `json:"outcome"`
-	Citation string `json:"citation,omitempty"`
+	ID          string `json:"id"`
+	Outcome     string `json:"outcome"`
+	Citation    string `json:"citation,omitempty"`
+	Description string `json:"description,omitempty"`
 
 	CareFirstMessage string   `json:"care_first_message"`
 	Disclaimer       string   `json:"disclaimer"`
@@ -68,6 +69,7 @@ func caseRecordToResponse(c store.CaseRecord) CaseResponse {
 		ID:               c.ID,
 		Outcome:          c.Outcome,
 		Citation:         c.Citation,
+		Description:      c.FamilyDescriptionRaw,
 		CareFirstMessage: c.CareFirstMessage,
 		Disclaimer:       c.Disclaimer,
 		TierMessage:      c.TierMessage,

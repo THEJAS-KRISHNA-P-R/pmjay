@@ -50,7 +50,7 @@ export function EvidenceForm({
   return (
     <section className="card p-6 sm:p-8 animate-fade-in-up">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-800">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_2px_rgba(42,38,33,0.04)]">
           <IconPencilLine className="h-4 w-4" />
         </div>
         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-sand-900">
@@ -113,7 +113,7 @@ export function EvidenceForm({
           <button
             type="submit"
             disabled={isPending}
-            className="tap-target inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-7 py-3 text-sm font-bold text-white transition-all hover:bg-teal-800 active:scale-95 disabled:opacity-60 disabled:active:scale-100"
+            className="btn-primary tap-target px-7 py-3 text-sm"
           >
             {isPending ? "Saving…" : "Save this"}
           </button>
@@ -129,9 +129,9 @@ export function EvidenceForm({
             {evidence.map((e, i) => (
               <li
                 key={i}
-                className="flex items-center gap-2.5 rounded-xl bg-sand-50 border border-sand-200/70 px-4 py-2.5 text-xs sm:text-sm text-sand-800 font-medium"
+                className="flex items-center gap-2.5 rounded-xl bg-white border border-sand-200/70 px-4 py-2.5 text-xs sm:text-sm text-sand-800 font-medium shadow-[0_1px_3px_rgba(42,38,33,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-600 shrink-0" aria-hidden="true" />
+                <span className="h-1.5 w-1.5 rounded-full bg-ink-600 shrink-0" aria-hidden="true" />
                 <span>{[e.staff_name, e.approx_time, e.note].filter(Boolean).join(" — ")}</span>
               </li>
             ))}

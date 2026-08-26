@@ -57,7 +57,7 @@ export function ScenarioGrid() {
   return (
     <section aria-labelledby="scenarios-title" className="space-y-8">
       <div className="text-center space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
           Clarity Across Every Scenario
         </p>
         <h2 id="scenarios-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-sand-900">
@@ -70,7 +70,7 @@ export function ScenarioGrid() {
 
       <div className="grid gap-5 sm:grid-cols-2">
         {tiers.map((t) => (
-          <div key={t.title} className="card p-6 sm:p-7 flex flex-col justify-between space-y-4">
+          <div key={t.title} className="card card-interactive p-6 sm:p-7 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <span className={`badge ${t.iconBg} ${t.iconBorder} ${t.iconText}`}>
                 <t.Icon className="h-3 w-3" />
@@ -84,8 +84,8 @@ export function ScenarioGrid() {
                 {t.scenario}
               </p>
             </div>
-            <div className="rounded-xl bg-sand-50 border border-sand-200/70 p-3.5 text-xs text-sand-700 leading-relaxed font-medium">
-              <strong className="text-teal-800">Advocate Action: </strong>
+            <div className="rounded-xl bg-sand-50/80 border border-sand-100/80 p-3.5 text-xs text-sand-700 leading-relaxed font-medium">
+              <strong className="text-ink-800">Advocate Action: </strong>
               {t.resolution}
             </div>
           </div>

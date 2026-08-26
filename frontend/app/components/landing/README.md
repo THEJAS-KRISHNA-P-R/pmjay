@@ -26,9 +26,9 @@ This used to be simpler and worse: all seven rendered on `app/page.tsx`, in this
 
 `Features.tsx` states "315" HBP packages and "300 independently verified." The same two numbers are restated in `app/about/page.tsx` and in `app/guide/page.tsx`. If the backend's `internal/hbp/data/hbp_packages.json` dataset ever changes size or verified-count, all three places need updating together — there's no single source of truth these pull from at build time, so this is a manual-consistency responsibility, not something TypeScript will catch for you.
 
-## `Footer.tsx`: `SHELL_WIDTH` and `SITE_LINKS`
+## `Footer.tsx`: `SHELL_WIDTH`, `SITE_LINKS`, and `LEGAL_LINKS`
 
-Imports `SHELL_WIDTH` from `../Header` (the `max-w-6xl` shell width every page shares) rather than redefining its own — see `app/components/README.md`'s note on `Header.tsx` for why that's a single export, not two independently-maintained constants that could drift. `SITE_LINKS` here is a separate array from `Header.tsx`'s `NAV_LINKS` (different component, same four destinations) — if you add a new top-level page, both need updating, not just one; a page linked from the navbar but missing from the footer (or vice versa) is an easy, easy-to-miss inconsistency.
+Organized into a 4-column responsive grid linking site exploration pages (`SITE_LINKS`), compliance and privacy policies (`LEGAL_LINKS`: Privacy Policy, Terms of Service, Legal/Medical Disclaimers, Data Settings), and emergency statutory contact numbers (14555, 15100, 112). Features a persistent bottom legal notice and direct links to `llms.txt`.
 
 ## If you're adding a new section here
 

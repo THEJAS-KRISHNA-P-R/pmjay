@@ -43,7 +43,7 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   },
   amber: {
     label: "Needs one more check",
-    description: "Not a clear yes or no yet — here's what to ask.",
+    description: "Not a clear yes or no yet: here's what to ask.",
     Icon: IconHelpCircle,
     iconName: "help-circle",
     panelBg: "bg-tier-amber-bg",
@@ -53,7 +53,7 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   },
   red: {
     label: "This is correctly not covered",
-    description: "Not a dispute — a straight answer about the rule.",
+    description: "Not a dispute: a straight answer about the rule.",
     Icon: IconInfo,
     iconName: "info",
     panelBg: "bg-tier-red-bg",
@@ -73,7 +73,7 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   },
   handoff: {
     label: "Let's get you a person",
-    description: "This needs a human — connecting you with free legal help.",
+    description: "This needs a human (connecting you with free legal help).",
     Icon: IconLifeBuoy,
     iconName: "life-buoy",
     panelBg: "bg-tier-handoff-bg",

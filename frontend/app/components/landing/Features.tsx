@@ -27,12 +27,12 @@ const features: Feature[] = [
   {
     id: "hbp-database",
     title: "315 HBP Package Index",
-    shortDesc: "National Health Authority benefit schedule with indicative rates — 300 of 315 entries independently verified.",
-    fullDesc: "Covers HBP packages across surgical, medical, and pediatric specialties with indicative rates and package definitions. A small number of entries are placeholders pending verification against the official master file — flagged rather than presented as settled.",
+    shortDesc: "National Health Authority benefit schedule with indicative rates (300 of 315 entries independently verified).",
+    fullDesc: "Covers HBP packages across surgical, medical, and pediatric specialties with indicative rates and package definitions. A small number of entries are placeholders pending verification against the official master file, and are clearly flagged rather than presented as settled.",
     bullets: [
       "Indicative procedure rates and package definitions",
       "Specialty-wise categorization (Cardiology, General Surgery, Ortho)",
-      "Every entry marked verified or pending — never blurred together",
+      "Every entry marked verified or pending, never blurred together",
     ],
     Icon: IconClipboardList,
   },
@@ -104,7 +104,7 @@ export function Features() {
   return (
     <section aria-labelledby="features-title" className="space-y-8">
       <div className="text-center space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
           Core Engine Capabilities
         </p>
         <h2 id="features-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-sand-900">
@@ -123,10 +123,10 @@ export function Features() {
               type="button"
               key={f.id}
               onClick={() => setActiveFeature(f)}
-              className="card p-6 flex flex-col justify-between text-left transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-teal-200"
+              className="card card-interactive p-6 flex flex-col justify-between text-left"
             >
               <div className="space-y-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-100 text-ink-700">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="font-display text-base sm:text-lg font-bold text-sand-900">
@@ -136,7 +136,7 @@ export function Features() {
                   {f.shortDesc}
                 </p>
               </div>
-              <div className="pt-4 text-xs font-bold text-teal-700">
+              <div className="pt-4 text-xs font-bold text-ink-700">
                 Explore details →
               </div>
             </button>
@@ -158,7 +158,7 @@ export function Features() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-white">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-ink-700 text-white">
                 <activeFeature.Icon className="h-5 w-5" />
               </span>
               <button
@@ -181,13 +181,13 @@ export function Features() {
             </div>
 
             <div className="rounded-2xl bg-sand-50 border border-sand-200/70 p-4 sm:p-5 space-y-2.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
+              <p className="text-xs font-bold uppercase tracking-wider text-ink-800">
                 Key Invariants
               </p>
               <ul className="space-y-2 text-xs sm:text-sm text-sand-700 font-medium">
                 {activeFeature.bullets.map((b, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <IconCheck className="h-4 w-4 shrink-0 text-teal-600 mt-0.5" />
+                    <IconCheck className="h-4 w-4 shrink-0 text-ink-600 mt-0.5" />
                     <span>{b}</span>
                   </li>
                 ))}

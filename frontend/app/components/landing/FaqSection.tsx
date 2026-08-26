@@ -27,11 +27,11 @@ export function FaqSection({ hideHeader = false }: { hideHeader?: boolean }) {
     },
     {
       q: "Does this work in Malayalam or Hindi, not just English?",
-      a: "Yes. You can describe your situation in English, native Malayalam script (മലയാളം), or Hindi (हिन्दी). Please note that Malayalam typed using English letters (Manglish transliteration) is not supported — please type in native script or standard English for accurate package evaluation.",
+      a: "Yes: describe it your own way, in English or any major Indian language, in that language's own script or typed out in English letters (Manglish, Hinglish, and so on), and mixing languages in one message is fine too. It's most reliable today in English, Hindi, or Malayalam; wider language support is actively being expanded.",
     },
     {
       q: "Do I need to create an account or share my phone number?",
-      a: "No. There's no login, no phone number, and no tracking required to use this tool. Your case is saved behind a private, hard-to-guess link so you (or whoever is helping you) can return to it or download the PDF later — nothing is shared with hospitals, insurers, or any government system automatically.",
+      a: "No. There's no login, no phone number, and no tracking required to use this tool. Your case is saved behind a private, hard-to-guess link so you (or whoever is helping you) can return to it or download the PDF later. Nothing is shared with hospitals, insurers, or any government system automatically.",
     },
   ];
 
@@ -41,7 +41,7 @@ export function FaqSection({ hideHeader = false }: { hideHeader?: boolean }) {
     <section aria-labelledby="faq-title" className="space-y-6">
       {!hideHeader && (
         <div className="text-center space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-700">
             Clear Answers to Critical Questions
           </p>
           <h2 id="faq-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-sand-900">
@@ -61,23 +61,35 @@ export function FaqSection({ hideHeader = false }: { hideHeader?: boolean }) {
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="w-full flex items-center justify-between p-5 sm:p-6 text-left"
+                className="w-full flex items-center justify-between p-5 sm:p-6 text-left transition-colors hover:bg-sand-50/50"
                 aria-expanded={isOpen}
+                aria-controls={`faq-answer-${index}`}
               >
                 <span className="font-display text-base sm:text-lg font-bold text-sand-900 pr-4">
                   {faq.q}
                 </span>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-sand-100 text-teal-700">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-ink-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_2px_rgba(42,38,33,0.04)]">
                   <IconChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    className={`h-4 w-4 transition-transform duration-300 ease-out ${
+                      isOpen ? "rotate-180 text-emerald-700" : ""
+                    }`}
                   />
                 </span>
               </button>
-              {isOpen && (
-                <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-1 text-xs sm:text-sm text-sand-700 leading-relaxed font-medium border-t border-sand-100">
-                  <p className="pt-4">{faq.a}</p>
+
+              {/* Smooth slide open/close accordion container */}
+              <div
+                id={`faq-answer-${index}`}
+                className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                  isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="px-5 pb-5 sm:px-6 sm:pb-6 pt-1 text-xs sm:text-sm text-sand-700 leading-relaxed font-medium border-t border-sand-100/70">
+                    <p className="pt-3">{faq.a}</p>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

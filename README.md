@@ -54,7 +54,7 @@ make test           # go test ./... -cover
 make test-race       # same, with the race detector
 
 cd ../frontend
-npm test             # vitest run — 74 tests across 12 files
+npm test             # vitest run — 77 tests across 12 files
 ```
 
 268 backend test cases as of this build, spanning every worked example and extended test-case scenario in the original spec, plus the H3 (tier-accuracy) and H4 (never-delay-care) adversarial safety sweeps described in Appendix R. See [`docs/TESTING.md`](docs/TESTING.md) for what's actually automated here versus what still needs a real field study — on both the backend and the frontend.
@@ -77,9 +77,14 @@ backend/            Go 1.22, standard library only. See ARCHITECTURE.md, backend
 frontend/           Next.js 16, App Router, TypeScript, Tailwind v4. See frontend/README.md.
   app/                See frontend/app/README.md.
     components/        Every React component. See frontend/app/components/README.md.
-    case/[id]/          The result page. See frontend/app/case/[id]/README.md.
+    dashboard/         Case dashboard & local management. See frontend/app/dashboard/README.md.
+    cases/             Case intake & evaluation report workspaces. See frontend/app/cases/README.md.
+    settings/          User preferences & accessibility. See frontend/app/settings/README.md.
+    privacy/           DPDP Act 2023 Privacy Policy. See frontend/app/privacy/README.md.
+    terms/             Terms of Service & Care-First rule. See frontend/app/terms/README.md.
+    disclaimer/        Legal & Medical Disclaimers. See frontend/app/disclaimer/README.md.
     fonts/              Self-hosted font files. See frontend/app/fonts/README.md.
-  lib/                Types + API client. See frontend/lib/README.md.
+  lib/                Types, API client, local storage helpers. See frontend/lib/README.md.
 docs/               Architecture, safety design, API reference, data provenance, deployment, testing, open questions, validation interview guide. See docs/README.md.
 HANDOVER.md         Session-to-session handover notes — what the most recent session did, and what's genuinely still open, in priority order. Read this first if you're picking this project up cold.
 ```

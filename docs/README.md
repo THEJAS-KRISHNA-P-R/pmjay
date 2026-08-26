@@ -4,7 +4,7 @@ Deep-dive documentation that didn't belong in a folder-level `README.md` because
 
 Two related files live at the repository root instead of here, deliberately: `../README.md` (the entry point — what this is, quickstart, top-level status) and `../ARCHITECTURE.md` (the system-shape diagram and the handful of build-environment-driven engineering decisions that shaped everything downstream — zero Go dependencies, no database, self-hosted fonts). Read those two first if you haven't; everything in this folder assumes that context.
 
-## The seven documents here
+## The eight documents here
 
 | Document | What it's the answer to |
 |---|---|
@@ -15,6 +15,7 @@ Two related files live at the repository root instead of here, deliberately: `..
 | `DEPLOYMENT.md` | Both real deployment paths (colocated on existing infrastructure, or fully standalone), with concrete steps — Fly.io/Oracle Cloud for the backend, Vercel for the frontend, and the same-origin-via-Caddy setup that makes `NEXT_PUBLIC_API_BASE_URL`'s default just work. |
 | `OPEN_QUESTIONS.md` | The single most important document if you're picking this project up cold: an honest, prioritized list of what's genuinely unfinished, written the same way each build session left it for the next one. Read this and `../HANDOVER.md` together before starting new work. |
 | `VALIDATION_INTERVIEW_GUIDE.md` | A structured guide for the one piece of validation no code change can substitute for — an actual conversation with a family or ASHA worker about whether they'd use this before a crisis, not during one. Still the highest-priority open item on the whole project as of the most recent `../HANDOVER.md`. |
+| `MARKETING_AND_GO_VERIFICATION.md` | The two concrete pieces of work the 26 August 2026 restructure (see `../HANDOVER.md`'s addendum of that date) started but didn't finish: compiling and live-testing that session's two backend changes with no Go toolchain available to do it there, and closing the gap between the marketing site and the product brief it was redesigned against — what's a real gap (technical SEO, a missing Languages page) versus what's already in decent shape and just needs a targeted audit. |
 
 ## Why documentation is split this way — folder READMEs vs. this folder
 
