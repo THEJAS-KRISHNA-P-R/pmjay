@@ -14,11 +14,24 @@ import "testing"
 
 func validDataset() *Dataset {
 	return &Dataset{
-		Packages: []Package{{
-			PackageCode: "P1", PackageName: "Test Package", Specialty: "Test",
-			IndicativeRateINR: 100, CommonDescriptionKeywords: []string{"x"},
-			SourceNote: "verified test fixture",
-		}},
+		Packages: []Package{
+			{
+				PackageCode: "P1", PackageName: "Test Package", Specialty: "Test",
+				IndicativeRateINR: 100, CommonDescriptionKeywords: []string{"x"},
+				SourceNote: "verified test fixture",
+			},
+			{
+				// validate() requires this catch-all to exist (see
+				// TestValidate_MissingUnspecifiedPackageRejected below) —
+				// present here so every other test in this file, which
+				// mutates or duplicates ds.Packages[0] without touching
+				// this one, keeps exercising a dataset that's otherwise
+				// valid.
+				PackageCode: "UNSPECIFIED", PackageName: "Unspecified catch-all", Specialty: "Test",
+				IndicativeRateINR: 100, CommonDescriptionKeywords: []string{"x"},
+				SourceNote: "verified test fixture",
+			},
+		},
 		Exclusions: []Exclusion{{
 			Category: "E1", DisplayName: "Test Exclusion", Description: "x", SourceNote: "x",
 		}},
@@ -102,6 +115,25 @@ func TestValidate_EmptyPackageSourceNoteRejected(t *testing.T) {
 	ds.Packages[0].SourceNote = ""
 	if err := validate(ds); err == nil {
 		t.Error("expected validation error for empty package source_note (Appendix F traceability)")
+	}
+}
+
+func TestValidate_MissingUnspecifiedPackageRejected(t *testing.T) {
+	// internal/retrieval.ensureUnspecifiedIncluded and
+	// internal/tiering.decidePackage both assume a package with code
+	// "UNSPECIFIED" exists — this is what lets the system give an
+	// honest low-confidence answer instead of forcing a bad fit onto a
+	// named package. Removing it should fail loudly here, at dataset
+	// load, not degrade silently at request time.
+	ds := validDataset()
+	for i, p := range ds.Packages {
+		if p.PackageCode == "UNSPECIFIED" {
+			ds.Packages = append(ds.Packages[:i], ds.Packages[i+1:]...)
+			break
+		}
+	}
+	if err := validate(ds); err == nil {
+		t.Error("expected validation error when no package has package_code \"UNSPECIFIED\"")
 	}
 }
 

@@ -52,6 +52,13 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 		allowed[o] = true
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Always set, regardless of whether this particular origin is
+		// allowed: the response differs by Origin either way (with
+		// CORS headers or without them), and a cache that doesn't know
+		// to vary on it could serve one origin's response — allowed or
+		// not — to a different origin entirely.
+		w.Header().Set("Vary", "Origin")
+
 		origin := r.Header.Get("Origin")
 		if allowed[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -72,7 +79,7 @@ const (
 )
 
 type rateLimiter struct {
-	mu           sync.Mutex
+	mu            sync.Mutex
 	minuteBuckets map[string]*bucket
 	hourBuckets   map[string]*bucket
 	perMinute     int
@@ -115,14 +122,32 @@ func (rl *rateLimiter) checkAndReserve(key string) (allowed bool, retryAfterSec 
 		rl.hourBuckets[key] = hourB
 	}
 
-	rl.refillBucket(minB, now, float64(rl.perMinute)/60.0)
-	rl.refillBucket(hourB, now, float64(rl.perHour)/3600.0)
+	rl.refillBucket(minB, now, float64(rl.perMinute)/60.0, float64(rl.perMinute))
+	rl.refillBucket(hourB, now, float64(rl.perHour)/3600.0, float64(rl.perHour))
 
 	remainingMinute = int(minB.tokens)
 	remainingHour = int(hourB.tokens)
 
 	if minB.tokens < 1 || hourB.tokens < 1 {
-		retryAfterSec = int(min(60-minB.lastRefill.Sub(now).Seconds(), 3600-hourB.lastRefill.Sub(now).Seconds()))
+		// How long until whichever bucket is short actually has a token,
+		// given its current deficit and refill rate — not how long since
+		// its last refill, which is always ~0 here (refillBucket just set
+		// lastRefill to now, a few lines above). And max, not min: a
+		// caller needs BOTH buckets to clear before the next request is
+		// allowed, so the binding constraint is whichever bucket takes
+		// LONGER, not whichever is closer.
+		var waitSeconds float64
+		if minB.tokens < 1 {
+			if needed := (1 - minB.tokens) / (float64(rl.perMinute) / 60.0); needed > waitSeconds {
+				waitSeconds = needed
+			}
+		}
+		if hourB.tokens < 1 {
+			if needed := (1 - hourB.tokens) / (float64(rl.perHour) / 3600.0); needed > waitSeconds {
+				waitSeconds = needed
+			}
+		}
+		retryAfterSec = int(waitSeconds)
 		if retryAfterSec < 1 {
 			retryAfterSec = 1
 		}
@@ -140,26 +165,31 @@ func (rl *rateLimiter) consume(key string) {
 	rl.sweepLocked(now)
 
 	if b, ok := rl.minuteBuckets[key]; ok {
-		rl.refillBucket(b, now, float64(rl.perMinute)/60.0)
+		rl.refillBucket(b, now, float64(rl.perMinute)/60.0, float64(rl.perMinute))
 		if b.tokens > 0 {
 			b.tokens--
 		}
 	}
 	if b, ok := rl.hourBuckets[key]; ok {
-		rl.refillBucket(b, now, float64(rl.perHour)/3600.0)
+		rl.refillBucket(b, now, float64(rl.perHour)/3600.0, float64(rl.perHour))
 		if b.tokens > 0 {
 			b.tokens--
 		}
 	}
 }
 
-func (rl *rateLimiter) refillBucket(b *bucket, now time.Time, ratePerSec float64) {
+// refillBucket adds tokens for elapsed time at ratePerSec, capped at
+// maxTokens. maxTokens is passed explicitly by the caller rather than
+// inferred from ratePerSec — inferring "is this the minute or hour
+// bucket" from whether ratePerSec is >= 1 silently picks the wrong cap
+// whenever perMinute < 60 (which includes this system's own production
+// default of 1/minute): the minute bucket would refill and cap at
+// perHour instead of perMinute, letting a client that waits long enough
+// burst up to perHour requests at once instead of the intended steady
+// perMinute pace. See TestRateLimiter_MinuteBucketDoesNotOverfillPastItsOwnLimit.
+func (rl *rateLimiter) refillBucket(b *bucket, now time.Time, ratePerSec float64, maxTokens float64) {
 	elapsed := now.Sub(b.lastRefill).Seconds()
 	b.tokens += elapsed * ratePerSec
-	maxTokens := float64(rl.perMinute)
-	if ratePerSec < 1 {
-		maxTokens = float64(rl.perHour)
-	}
 	if b.tokens > maxTokens {
 		b.tokens = maxTokens
 	}
@@ -192,11 +222,11 @@ func min(a, b float64) float64 {
 
 type rateLimitResponseWriter struct {
 	http.ResponseWriter
-	status       int
-	key          string
-	limiter      *rateLimiter
-	retryAfter   int
-	remainingMin int
+	status        int
+	key           string
+	limiter       *rateLimiter
+	retryAfter    int
+	remainingMin  int
 	remainingHour int
 }
 

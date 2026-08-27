@@ -45,9 +45,14 @@ func Load() (*Dataset, error) {
 	return ds, nil
 }
 
-// MustLoad is Load, panicking on error. Used only at process start in
-// main.go, where a bad embedded dataset is a build defect, not a runtime
-// condition to recover from.
+// MustLoad is Load, panicking on error. main.go does not use this — it
+// calls Load and propagates the error through run()'s normal error
+// path, since a slog-formatted startup log is more useful than a raw
+// panic trace for an operator reading container logs. MustLoad exists
+// for callers where propagating an error is awkward and a bad embedded
+// dataset is unambiguously a build defect rather than a runtime
+// condition — test setup (see *_test.go across this module) being the
+// main one.
 func MustLoad() *Dataset {
 	ds, err := Load()
 	if err != nil {
@@ -129,6 +134,20 @@ func validate(ds *Dataset) error {
 		if e.SourceNote == "" {
 			return fmt.Errorf("exclusion %q: empty source_note (every record must be traceable — Appendix F)", e.Category)
 		}
+	}
+
+	// The "UNSPECIFIED" package is PMJAY's discretionary catch-all
+	// (internal/extract/prompt.go's system prompt instructs the model to
+	// select it, at low confidence, when a real procedure genuinely
+	// doesn't map to any named package). internal/retrieval always
+	// includes it in the shortlist and internal/tiering treats it as a
+	// distinct outcome path — both silently assume it exists rather than
+	// checking, so a future data edit that renamed or dropped it would
+	// degrade the system's "honest low-confidence fallback" behavior
+	// quietly instead of failing here, at the one place that already
+	// fails loudly on every other structural problem.
+	if !seenCodes["UNSPECIFIED"] {
+		return fmt.Errorf("no package with package_code \"UNSPECIFIED\" — internal/retrieval and internal/tiering both require this catch-all entry to exist")
 	}
 
 	return nil

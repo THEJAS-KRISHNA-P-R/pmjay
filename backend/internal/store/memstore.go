@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // MemStore is a thread-safe, pure in-memory Store. State does not survive
@@ -54,6 +55,7 @@ func (m *MemStore) AppendEvidence(_ context.Context, id string, e EvidenceEntry)
 		return CaseRecord{}, fmt.Errorf("store: cannot append evidence to case %q: %w", id, ErrNotFound)
 	}
 	c.Evidence = append(c.Evidence, e)
+	c.UpdatedAt = time.Now()
 	m.cases[id] = c
 	return c, nil
 }

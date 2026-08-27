@@ -29,8 +29,28 @@ export class ApiError extends Error {
   }
 }
 
+export class RateLimitError extends Error {
+  retryAfterSeconds: number;
+
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.name = "RateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    if (res.status === 429) {
+      const retryAfterStr = res.headers.get("Retry-After");
+      const retryAfter = retryAfterStr ? parseInt(retryAfterStr, 10) : 10;
+      let body: ErrorResponse = { error: "Too many requests. Please wait." };
+      try {
+        body = (await res.json()) as ErrorResponse;
+      } catch {}
+      throw new RateLimitError(body.error, isNaN(retryAfter) ? 10 : retryAfter);
+    }
+
     let body: ErrorResponse = { error: `Request failed with status ${res.status}` };
     try {
       body = (await res.json()) as ErrorResponse;

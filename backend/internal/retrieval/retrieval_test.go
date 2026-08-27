@@ -96,6 +96,57 @@ func TestRetrieve_RespectsMaxCandidatesBound(t *testing.T) {
 	}
 }
 
+func TestRetrieve_ZeroSignalFallbackUsesWiderBoundThanNormal(t *testing.T) {
+	// Nonsense ASCII tokens that don't match anything real still take the
+	// zero-signal path (every package scores 0), same as native-script
+	// input does — this just avoids needing non-ASCII literals in this
+	// specific assertion. The bound itself should be MaxCandidatesWhenBlind,
+	// not the tighter MaxCandidates used when scoring actually found signal.
+	ds := testDataset(t)
+	candidates := Retrieve(ds, "zzqxjk vvbnmq wwpldf")
+	if len(candidates) <= MaxCandidates {
+		t.Errorf("expected the zero-signal fallback to use the wider MaxCandidatesWhenBlind=%d bound, got only %d candidates (MaxCandidates=%d)",
+			MaxCandidatesWhenBlind, len(candidates), MaxCandidates)
+	}
+	if len(candidates) > MaxCandidatesWhenBlind+1 { // +1 tolerance for guaranteed Unspecified append
+		t.Errorf("candidate count %d exceeds MaxCandidatesWhenBlind=%d bound (with Unspecified tolerance)", len(candidates), MaxCandidatesWhenBlind)
+	}
+}
+
+func TestRetrieve_NativeScriptDescriptionNowFindsAPreviouslyMissedPackage(t *testing.T) {
+	// Real regression test for the gap this fix narrows: MG025A
+	// ("Recurrent vomiting with dehydration") sits at index 70 in the
+	// embedded dataset — inside the widened MaxCandidatesWhenBlind=80
+	// bound but outside the old MaxCandidates=20 one. A description of
+	// exactly this situation, in Malayalam with no embedded English or
+	// digits, used to tokenize to nothing and silently miss this package;
+	// it's included from here on. (The phrase below is illustrative, not
+	// a verified professional translation — it exists to be genuine
+	// non-ASCII script, not to be exact clinical Malayalam.)
+	//
+	// This narrows the gap, it does not close it: a package further into
+	// the file than MaxCandidatesWhenBlind is still unreachable from a
+	// zero-signal description, which on the real ~1,900-code dataset is
+	// most of it. See MaxCandidatesWhenBlind's doc comment for what
+	// actually closes this.
+	ds := testDataset(t)
+	description := "എന്റെ കുട്ടിക്ക് ഛർദ്ദിയും വരൾച്ചയും ഉണ്ട്"
+	if toks := tokenize(description); len(toks) != 0 {
+		t.Fatalf("test assumption violated: expected this description to tokenize to nothing, got %#v", toks)
+	}
+
+	candidates := Retrieve(ds, description)
+	found := false
+	for _, c := range candidates {
+		if c.Package.PackageCode == "MG025A" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected MG025A to be reachable under the widened blind-fallback bound")
+	}
+}
+
 func TestRetrieve_CaseAndPunctuationInsensitive(t *testing.T) {
 	ds := testDataset(t)
 	a := Retrieve(ds, "GALLBLADDER stones!!! operation???")

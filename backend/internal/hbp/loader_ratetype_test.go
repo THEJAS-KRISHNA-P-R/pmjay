@@ -23,11 +23,17 @@ func TestValidate_TieredRateRequiresMaxGreaterThanFloor(t *testing.T) {
 
 func TestValidate_TieredRateAcceptsValidRange(t *testing.T) {
 	ds := &Dataset{
-		Packages: []Package{{
-			PackageCode: "T2", PackageName: "x", Specialty: "x",
-			IndicativeRateINR: 100, RateType: "tiered", RateMaxINR: 150,
-			CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
-		}},
+		Packages: []Package{
+			{
+				PackageCode: "T2", PackageName: "x", Specialty: "x",
+				IndicativeRateINR: 100, RateType: "tiered", RateMaxINR: 150,
+				CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
+			},
+			{
+				PackageCode: "UNSPECIFIED", PackageName: "x", Specialty: "x",
+				IndicativeRateINR: 100, CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
+			},
+		},
 		Exclusions: []Exclusion{{Category: "x", DisplayName: "x", Description: "x", SourceNote: "x"}},
 	}
 	if err := validate(ds); err != nil {
@@ -88,12 +94,18 @@ func TestValidate_PerDiemLevelsMustStrictlyIncrease(t *testing.T) {
 
 func TestValidate_PerDiemValidRecordPasses(t *testing.T) {
 	ds := &Dataset{
-		Packages: []Package{{
-			PackageCode: "P4", PackageName: "x", Specialty: "x",
-			IndicativeRateINR: 2300, RateType: "per_diem",
-			PerDiemRates:              &PerDiemRates{RoutineWardINR: 2300, HDUINR: 3630, ICUNoVentINR: 9350, ICUVentINR: 9900},
-			CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
-		}},
+		Packages: []Package{
+			{
+				PackageCode: "P4", PackageName: "x", Specialty: "x",
+				IndicativeRateINR: 2300, RateType: "per_diem",
+				PerDiemRates:              &PerDiemRates{RoutineWardINR: 2300, HDUINR: 3630, ICUNoVentINR: 9350, ICUVentINR: 9900},
+				CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
+			},
+			{
+				PackageCode: "UNSPECIFIED", PackageName: "x", Specialty: "x",
+				IndicativeRateINR: 100, CommonDescriptionKeywords: []string{"x"}, SourceNote: "verified test fixture",
+			},
+		},
 		Exclusions: []Exclusion{{Category: "x", DisplayName: "x", Description: "x", SourceNote: "x"}},
 	}
 	if err := validate(ds); err != nil {

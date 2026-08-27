@@ -55,57 +55,126 @@ func TestRecoverMiddleware_SubsequentRequestsStillWork(t *testing.T) {
 	}
 }
 
+// testAllow is a test-only convenience wrapping checkAndReserve+consume,
+// mirroring the pre-dual-window rate limiter's atomic single-call
+// behavior, so most of these tests can stay close to testing one
+// decision at a time instead of threading the split API through every
+// call site.
+func (rl *rateLimiter) testAllow(key string) bool {
+	ok, _, _, _ := rl.checkAndReserve(key)
+	if ok {
+		rl.consume(key)
+	}
+	return ok
+}
+
 func TestRateLimiter_AllowsUpToConfiguredLimit(t *testing.T) {
-	rl := newRateLimiter(3)
+	rl := newRateLimiter(3, 100000) // generous hour limit — only the minute window should bind here
 	for i := 0; i < 3; i++ {
-		if !rl.allow("client-a") {
+		if !rl.testAllow("client-a") {
 			t.Fatalf("request %d should have been allowed within the limit of 3", i+1)
 		}
 	}
 }
 
 func TestRateLimiter_BlocksOverLimit(t *testing.T) {
-	rl := newRateLimiter(3)
+	rl := newRateLimiter(3, 100000)
 	for i := 0; i < 3; i++ {
-		rl.allow("client-b")
+		rl.testAllow("client-b")
 	}
-	if rl.allow("client-b") {
+	if rl.testAllow("client-b") {
 		t.Fatal("expected the 4th request in the same window to be blocked")
 	}
 }
 
 func TestRateLimiter_TracksClientsIndependently(t *testing.T) {
-	rl := newRateLimiter(1)
-	if !rl.allow("client-c") {
+	rl := newRateLimiter(1, 100000)
+	if !rl.testAllow("client-c") {
 		t.Fatal("client-c's first request should be allowed")
 	}
-	if !rl.allow("client-d") {
+	if !rl.testAllow("client-d") {
 		t.Fatal("client-d's first request should be allowed independently of client-c's usage")
 	}
-	if rl.allow("client-c") {
+	if rl.testAllow("client-c") {
 		t.Fatal("client-c's second request should be blocked")
 	}
 }
 
 func TestRateLimiter_RefillsOverTime(t *testing.T) {
-	rl := newRateLimiter(60) // 1 token/sec
+	rl := newRateLimiter(60, 100000) // 1 token/sec on the minute window
 	fakeNow := time.Now()
 	rl.now = func() time.Time { return fakeNow }
 
-	if !rl.allow("client-e") {
+	if !rl.testAllow("client-e") {
 		t.Fatal("first request should be allowed")
 	}
 	// Immediately exhaust remaining tokens isn't needed for 60/min with
 	// 1 used — instead, jump time forward by 2 seconds and confirm
 	// tokens refilled rather than staying frozen.
 	fakeNow = fakeNow.Add(2 * time.Second)
-	if !rl.allow("client-e") {
+	if !rl.testAllow("client-e") {
 		t.Fatal("expected a token to have refilled after 2 seconds at 1 token/sec")
 	}
 }
 
+func TestRateLimiter_MinuteBucketDoesNotOverfillPastItsOwnLimit(t *testing.T) {
+	// Regression test: refillBucket must cap the minute bucket at
+	// perMinute tokens and the hour bucket at perHour tokens using the
+	// caller-supplied maxTokens, never by inferring which bucket it is
+	// from the rate's magnitude. The old inference (ratePerSec < 1 means
+	// "this is the hour bucket") is wrong whenever perMinute < 60 —
+	// which includes this system's own production default of 1/minute
+	// (see config.Load) — because perMinute/60 is then also < 1,
+	// misclassifying the MINUTE bucket as the hour one and capping it at
+	// perHour instead. With that bug, waiting long enough lets a client
+	// burst up to perHour requests at once instead of the intended
+	// steady perMinute pace, silently defeating the point of a strict
+	// per-minute cost control.
+	rl := newRateLimiter(1, 20) // production defaults
+	fakeNow := time.Now()
+	rl.now = func() time.Time { return fakeNow }
+
+	if !rl.testAllow("client") {
+		t.Fatal("first request should be allowed")
+	}
+
+	// Long enough for the minute bucket to have refilled far past 1
+	// token if the cap were wrong (5 min at 1/60 tokens/sec = 5 tokens'
+	// worth of refill if uncapped, correctly clamped to 1 if the cap is
+	// right) — but comfortably under bucketStaleAfter (10 min), so the
+	// sweep doesn't evict the bucket and mask the bug behind a fresh one.
+	fakeNow = fakeNow.Add(5 * time.Minute)
+
+	allowedInBurst := 0
+	for i := 0; i < 10; i++ {
+		if rl.testAllow("client") {
+			allowedInBurst++
+		}
+	}
+	if allowedInBurst > 1 {
+		t.Errorf("expected at most 1 request allowed in an immediate burst after refilling under perMinute=1, got %d — the minute bucket refilled past its own limit", allowedInBurst)
+	}
+}
+
+func TestRateLimiter_HourWindowBindsIndependentlyOfMinuteWindow(t *testing.T) {
+	// The other direction: a generous minute allowance must not let a
+	// client exceed the (tighter) hour allowance. This is the actual
+	// point of having two windows at all — a burst that the minute
+	// window alone would wave through is still caught by the hour one.
+	rl := newRateLimiter(1000, 2)
+	if !rl.testAllow("client") {
+		t.Fatal("1st request should be allowed (within both windows)")
+	}
+	if !rl.testAllow("client") {
+		t.Fatal("2nd request should be allowed (within both windows)")
+	}
+	if rl.testAllow("client") {
+		t.Fatal("3rd request should be blocked by the hour window (2/hour) despite the minute window being nowhere near its own limit of 1000")
+	}
+}
+
 func TestRateLimitMiddleware_Returns429WhenExceeded(t *testing.T) {
-	rl := newRateLimiter(1)
+	rl := newRateLimiter(1, 100000)
 	handler := rateLimitMiddleware(rl, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -124,6 +193,133 @@ func TestRateLimitMiddleware_Returns429WhenExceeded(t *testing.T) {
 	handler.ServeHTTP(rec2, req2)
 	if rec2.Code != http.StatusTooManyRequests {
 		t.Fatalf("expected second request from the same IP to be rate-limited, got %d", rec2.Code)
+	}
+}
+
+func TestLLMSemaphore_LimitsConcurrentAcquires(t *testing.T) {
+	sem := newLLMSemaphore(2)
+	sem.Acquire()
+	sem.Acquire()
+
+	thirdAcquired := make(chan struct{})
+	go func() {
+		sem.Acquire()
+		close(thirdAcquired)
+	}()
+
+	select {
+	case <-thirdAcquired:
+		t.Fatal("expected a 3rd Acquire to block while 2 are already held with a limit of 2")
+	case <-time.After(50 * time.Millisecond):
+		// expected: still blocked
+	}
+
+	sem.Release()
+	select {
+	case <-thirdAcquired:
+		// expected: unblocked after a release freed a slot
+	case <-time.After(time.Second):
+		t.Fatal("expected the blocked Acquire to proceed after a Release freed a slot")
+	}
+}
+
+func TestLLMConcurrencyMiddleware_BlocksBeyondLimit(t *testing.T) {
+	sem := newLLMSemaphore(1)
+	release := make(chan struct{})
+	entered := make(chan struct{}, 2)
+
+	handler := llmConcurrencyMiddleware(sem, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		entered <- struct{}{}
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	firstDone := make(chan struct{})
+	go func() {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil))
+		close(firstDone)
+	}()
+
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("expected the first request to enter the handler")
+	}
+
+	secondDone := make(chan struct{})
+	go func() {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil))
+		close(secondDone)
+	}()
+
+	select {
+	case <-entered:
+		t.Fatal("expected the second request to be blocked by the concurrency limit of 1 while the first is still in-flight")
+	case <-time.After(50 * time.Millisecond):
+		// expected: still blocked
+	}
+
+	close(release) // let both handler invocations proceed past their <-release read
+	select {
+	case <-entered:
+	case <-time.After(time.Second):
+		t.Fatal("expected the second request to enter the handler once the first released its slot")
+	}
+
+	<-firstDone
+	<-secondDone
+}
+
+func TestRateLimiter_RetryAfterReflectsActualDeficitNotHardcoded60(t *testing.T) {
+	// Regression test: retryAfterSec must be computed from the bucket's
+	// actual token deficit and refill rate, not from lastRefill's
+	// distance from now — by the time this calculation runs,
+	// refillBucket has already set lastRefill=now moments earlier, so
+	// that distance is always ~0 and the old formula always simplified
+	// to a hardcoded 60, regardless of how close the bucket actually was
+	// to allowing the next request.
+	rl := newRateLimiter(60, 100000) // 1 token/sec on the minute window; hour window irrelevant here
+	fakeNow := time.Now()
+	rl.now = func() time.Time { return fakeNow }
+
+	// Drain the bucket to ~0 tokens.
+	for i := 0; i < 60; i++ {
+		rl.testAllow("client")
+	}
+
+	_, retryAfter, _, _ := rl.checkAndReserve("client")
+	if retryAfter > 2 {
+		t.Errorf("at 1 token/sec with ~0 tokens remaining, expected retryAfterSec close to 1, got %d (hardcoded-60 bug would show 60)", retryAfter)
+	}
+}
+
+func TestRateLimiter_RetryAfterUsesTheLongerBindingWindow(t *testing.T) {
+	// The two windows are independent gates — a caller needs BOTH to
+	// clear, so the correct advice is the LONGER of the two waits, not
+	// the shorter. Here only the hour window is exhausted (6 requests
+	// drains it; the minute window has plenty left at 60/min), so the
+	// wait should reflect the hour window's own refill rate (~600s to
+	// go from 0 to 1 token at 6/hour) — a value that doesn't coincide
+	// with either the old hardcoded-60 bug or a hypothetical
+	// min-instead-of-max mistake, so this actually discriminates
+	// between them instead of passing either way.
+	rl := newRateLimiter(60, 6)
+	fakeNow := time.Now()
+	rl.now = func() time.Time { return fakeNow }
+
+	for i := 0; i < 6; i++ {
+		rl.testAllow("client")
+	}
+
+	_, retryAfter, remMin, remHour := rl.checkAndReserve("client")
+	if remHour >= 1 {
+		t.Fatalf("test setup broken: expected the hour bucket to be exhausted, got %d remaining", remHour)
+	}
+	if remMin < 1 {
+		t.Fatalf("test setup broken: expected the minute bucket to still have budget, got %d remaining", remMin)
+	}
+	if retryAfter < 500 || retryAfter > 700 {
+		t.Errorf("expected retryAfterSec near 600 (the hour window's own refill time), got %d", retryAfter)
 	}
 }
 
@@ -152,6 +348,29 @@ func TestCORSMiddleware_DoesNotEchoUnconfiguredOrigin(t *testing.T) {
 
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("expected no CORS header for an unconfigured origin, got %q", got)
+	}
+}
+
+func TestCORSMiddleware_SetsVaryOriginRegardlessOfWhetherAllowed(t *testing.T) {
+	// A cache sitting in front of this server must never serve one
+	// origin's response (with or without CORS headers) to a different
+	// origin — Vary: Origin is what tells it not to, and that's true
+	// whether the request's origin was on the allowlist or not.
+	handler := corsMiddleware([]string{"https://allowed.example"}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for _, origin := range []string{"https://allowed.example", "https://evil.example", ""} {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if got := rec.Header().Get("Vary"); got != "Origin" {
+			t.Errorf("origin %q: expected Vary: Origin, got %q", origin, got)
+		}
 	}
 }
 
@@ -236,28 +455,33 @@ func TestClientIP_ClientCannotSpoofLeadingForwardedForEntry(t *testing.T) {
 }
 
 func TestRateLimiter_SweepEvictsStaleEntriesButNotActiveOnes(t *testing.T) {
-	rl := newRateLimiter(5)
+	rl := newRateLimiter(5, 100000)
 	fakeNow := time.Now()
 	rl.now = func() time.Time { return fakeNow }
 
-	rl.allow("stale-client")
-	rl.allow("active-client")
+	rl.testAllow("stale-client")
+	rl.testAllow("active-client")
 
-	if len(rl.buckets) != 2 {
-		t.Fatalf("expected 2 buckets before any sweep, got %d", len(rl.buckets))
+	if len(rl.minuteBuckets) != 2 {
+		t.Fatalf("expected 2 minute buckets before any sweep, got %d", len(rl.minuteBuckets))
+	}
+	if len(rl.hourBuckets) != 2 {
+		t.Fatalf("expected 2 hour buckets before any sweep, got %d", len(rl.hourBuckets))
 	}
 
 	// Jump forward past bucketStaleAfter, touching only active-client —
 	// this both triggers a sweep (past sweepInterval) and refreshes
 	// active-client's lastRefill so it survives that sweep.
 	fakeNow = fakeNow.Add(bucketStaleAfter + time.Minute)
-	rl.allow("active-client")
+	rl.testAllow("active-client")
 
-	if _, exists := rl.buckets["stale-client"]; exists {
-		t.Error("expected stale-client's bucket to be evicted after being untouched past bucketStaleAfter")
-	}
-	if _, exists := rl.buckets["active-client"]; !exists {
-		t.Error("expected active-client's bucket to survive the sweep since it was just touched")
+	for _, buckets := range []map[string]*bucket{rl.minuteBuckets, rl.hourBuckets} {
+		if _, exists := buckets["stale-client"]; exists {
+			t.Error("expected stale-client's bucket to be evicted after being untouched past bucketStaleAfter")
+		}
+		if _, exists := buckets["active-client"]; !exists {
+			t.Error("expected active-client's bucket to survive the sweep since it was just touched")
+		}
 	}
 }
 
@@ -269,16 +493,16 @@ func TestRateLimiter_DoesNotGrowUnboundedlyUnderVaryingKeys(t *testing.T) {
 	// bounded by roughly bucketStaleAfter's width (~600 keys), however
 	// long the attack keeps going — the map must plateau, not keep
 	// growing linearly with total requests made.
-	rl := newRateLimiter(5)
+	rl := newRateLimiter(5, 100000)
 	fakeNow := time.Now()
 	rl.now = func() time.Time { return fakeNow }
 
 	countAt := func(n int) int {
 		for i := 0; i < n; i++ {
 			fakeNow = fakeNow.Add(time.Second)
-			rl.allow(fmt.Sprintf("varying-key-%d", i))
+			rl.testAllow(fmt.Sprintf("varying-key-%d", i))
 		}
-		return len(rl.buckets)
+		return len(rl.minuteBuckets)
 	}
 
 	first1000 := countAt(1000)

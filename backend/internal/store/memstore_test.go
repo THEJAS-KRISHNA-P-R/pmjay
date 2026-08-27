@@ -122,6 +122,31 @@ func TestMemStore_AppendEvidenceAccumulates(t *testing.T) {
 	}
 }
 
+func TestMemStore_AppendEvidenceAdvancesUpdatedAt(t *testing.T) {
+	s := NewMemStore()
+	ctx := context.Background()
+	c := sampleCase("case-4")
+	c.CreatedAt = time.Now().Add(-time.Hour)
+	c.UpdatedAt = c.CreatedAt
+	s.Create(ctx, c)
+
+	updated, err := s.AppendEvidence(ctx, "case-4", EvidenceEntry{Note: "note"})
+	if err != nil {
+		t.Fatalf("AppendEvidence failed: %v", err)
+	}
+	if !updated.UpdatedAt.After(c.UpdatedAt) {
+		t.Errorf("expected UpdatedAt to advance past %v, got %v", c.UpdatedAt, updated.UpdatedAt)
+	}
+	if !updated.CreatedAt.Equal(c.CreatedAt) {
+		t.Errorf("expected CreatedAt to stay %v, got %v", c.CreatedAt, updated.CreatedAt)
+	}
+
+	stored, _, _ := s.Get(ctx, "case-4")
+	if !stored.UpdatedAt.Equal(updated.UpdatedAt) {
+		t.Errorf("expected the stored record's UpdatedAt to match the returned one, got stored=%v returned=%v", stored.UpdatedAt, updated.UpdatedAt)
+	}
+}
+
 func TestMemStore_ConcurrentAccessIsSafe(t *testing.T) {
 	// Run with -race to actually catch data races; a plain pass here is
 	// necessary but not sufficient — see Makefile's `test-race` target.

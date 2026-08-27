@@ -87,6 +87,20 @@ type Config struct {
 	// prevents thundering herd from overwhelming the provider or
 	// exhausting quota in a spike.
 	MaxConcurrentLLM int
+
+	// GeneralRateLimitPerMinute and GeneralRateLimitPerHour bound the
+	// case-read, document, and evidence endpoints — the ones with no
+	// per-call LLM cost, so RateLimitPerMinute/Hour's cost-control
+	// reasoning doesn't apply to them, but they are not free to call
+	// unboundedly either: every evidence submission triggers a full
+	// rewrite of the case store to disk (see store.FileStore.flush), a
+	// cost that grows with the total number of cases stored, and
+	// document generation is real CPU work repeated on every call with
+	// no caching. Deliberately more generous than the intake limits —
+	// this exists to bound abuse, not to ration a family's own
+	// legitimate use of their own case.
+	GeneralRateLimitPerMinute int
+	GeneralRateLimitPerHour   int
 }
 
 // validLLMProviders is checked by Load — kept as an explicit set rather
@@ -108,19 +122,21 @@ var validLLMProviders = map[string]bool{
 // at startup, not mid-incident.
 func Load() (Config, error) {
 	cfg := Config{
-		Port:                getEnv("PORT", "8080"),
-		LLMProvider:         strings.ToLower(getEnv("LLM_PROVIDER", "anthropic")),
-		AnthropicAPIKey:     os.Getenv("ANTHROPIC_API_KEY"),
-		ClaudeModel:         getEnv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
-		GroqAPIKey:          os.Getenv("GROQ_API_KEY"),
-		GroqModel:           getEnv("GROQ_MODEL", "openai/gpt-oss-120b"),
-		GeminiAPIKey:        os.Getenv("GEMINI_API_KEY"),
-		GeminiModel:         getEnv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
-		DataFilePath:        getEnv("DATA_FILE_PATH", "./data/cases.json"),
-		AllowedOrigins:      splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:3000")),
-		RateLimitPerMinute:  1,
-		RateLimitPerHour:    20,
-		MaxConcurrentLLM:    3,
+		Port:                      getEnv("PORT", "8080"),
+		LLMProvider:               strings.ToLower(getEnv("LLM_PROVIDER", "anthropic")),
+		AnthropicAPIKey:           os.Getenv("ANTHROPIC_API_KEY"),
+		ClaudeModel:               getEnv("CLAUDE_MODEL", "claude-haiku-4-5-20251001"),
+		GroqAPIKey:                os.Getenv("GROQ_API_KEY"),
+		GroqModel:                 getEnv("GROQ_MODEL", "openai/gpt-oss-120b"),
+		GeminiAPIKey:              os.Getenv("GEMINI_API_KEY"),
+		GeminiModel:               getEnv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+		DataFilePath:              getEnv("DATA_FILE_PATH", "./data/cases.json"),
+		AllowedOrigins:            splitAndTrim(getEnv("ALLOWED_ORIGINS", "http://localhost:3000")),
+		RateLimitPerMinute:        1,
+		RateLimitPerHour:          20,
+		MaxConcurrentLLM:          3,
+		GeneralRateLimitPerMinute: 20,
+		GeneralRateLimitPerHour:   200,
 	}
 
 	if !validLLMProviders[cfg.LLMProvider] {
@@ -158,6 +174,28 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("config: MAX_CONCURRENT_LLM must be positive, got %d", n)
 		}
 		cfg.MaxConcurrentLLM = n
+	}
+
+	if raw := os.Getenv("GENERAL_RATE_LIMIT_PER_MINUTE"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: GENERAL_RATE_LIMIT_PER_MINUTE must be an integer, got %q: %w", raw, err)
+		}
+		if n <= 0 {
+			return Config{}, fmt.Errorf("config: GENERAL_RATE_LIMIT_PER_MINUTE must be positive, got %d", n)
+		}
+		cfg.GeneralRateLimitPerMinute = n
+	}
+
+	if raw := os.Getenv("GENERAL_RATE_LIMIT_PER_HOUR"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: GENERAL_RATE_LIMIT_PER_HOUR must be an integer, got %q: %w", raw, err)
+		}
+		if n <= 0 {
+			return Config{}, fmt.Errorf("config: GENERAL_RATE_LIMIT_PER_HOUR must be positive, got %d", n)
+		}
+		cfg.GeneralRateLimitPerHour = n
 	}
 
 	if cfg.Port == "" {

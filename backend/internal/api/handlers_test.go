@@ -29,7 +29,7 @@ func testServer(t *testing.T, fake *extract.FakeClient) (*Server, http.Handler) 
 		Store:     store.NewMemStore(),
 		Logger:    logger,
 	}
-	router := NewRouter(s, []string{"http://localhost:3000"}, 1000) // high limit; rate limiting tested separately
+	router := NewRouter(s, []string{"http://localhost:3000"}, 1000, 1000, 1000, 1000, 1000) // high limits; rate limiting tested separately
 	return s, router
 }
 
@@ -469,6 +469,115 @@ func TestHandleAddEvidence_RejectsCompletelyEmptyBody(t *testing.T) {
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for a completely empty evidence body, got %d", rec.Code)
+	}
+}
+
+func TestHandleAddEvidence_RejectsWhitespaceOnlyBody(t *testing.T) {
+	// Whitespace is not meaningful content — this must fail the same
+	// "at least one field required" check an empty string does, not
+	// slip through because len(" ") > 0.
+	desc := "gallbladder case for whitespace evidence test, confirmed stones"
+	fake := extract.NewFakeClient()
+	fake.Register(desc, extract.Result{
+		Candidates: []extract.CandidateMatch{{PackageCode: "SEED-GS-001", ConfidenceP: 90, Reasoning: "x"}},
+		Pending:    extract.SignalNotApplicable,
+	})
+	_, router := testServer(t, fake)
+	_, created := doIntake(t, router, desc)
+
+	body, _ := json.Marshal(AddEvidenceRequest{StaffName: "   ", ApproxTime: "\t", Note: "  \n  "})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cases/"+created.ID+"/evidence", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for a whitespace-only evidence body, got %d", rec.Code)
+	}
+}
+
+func TestHandleAddEvidence_TrimsWhitespace(t *testing.T) {
+	desc := "gallbladder case for trim evidence test, confirmed stones"
+	fake := extract.NewFakeClient()
+	fake.Register(desc, extract.Result{
+		Candidates: []extract.CandidateMatch{{PackageCode: "SEED-GS-001", ConfidenceP: 90, Reasoning: "x"}},
+		Pending:    extract.SignalNotApplicable,
+	})
+	_, router := testServer(t, fake)
+	_, created := doIntake(t, router, desc)
+
+	body, _ := json.Marshal(AddEvidenceRequest{StaffName: "  Reception Desk A  "})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cases/"+created.ID+"/evidence", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var updated CaseResponse
+	json.Unmarshal(rec.Body.Bytes(), &updated)
+	if got := updated.Evidence[0].StaffName; got != "Reception Desk A" {
+		t.Errorf("expected trimmed staff_name %q, got %q", "Reception Desk A", got)
+	}
+}
+
+func TestHandleAddEvidence_RejectsOverlongFields(t *testing.T) {
+	desc := "gallbladder case for overlong evidence test, confirmed stones"
+	fake := extract.NewFakeClient()
+	fake.Register(desc, extract.Result{
+		Candidates: []extract.CandidateMatch{{PackageCode: "SEED-GS-001", ConfidenceP: 90, Reasoning: "x"}},
+		Pending:    extract.SignalNotApplicable,
+	})
+
+	cases := []struct {
+		name string
+		req  AddEvidenceRequest
+	}{
+		{"staff_name", AddEvidenceRequest{StaffName: strings.Repeat("a", maxStaffNameLength+1)}},
+		{"approx_time", AddEvidenceRequest{ApproxTime: strings.Repeat("a", maxApproxTimeLength+1)}},
+		{"note", AddEvidenceRequest{Note: strings.Repeat("a", maxNoteLength+1)}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, router := testServer(t, fake)
+			_, created := doIntake(t, router, desc)
+
+			body, _ := json.Marshal(tc.req)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/cases/"+created.ID+"/evidence", bytes.NewReader(body))
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("expected 400 for an overlong %s, got %d: %s", tc.name, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandleAddEvidence_CapsEntriesPerCase(t *testing.T) {
+	desc := "gallbladder case for evidence cap test, confirmed stones"
+	fake := extract.NewFakeClient()
+	fake.Register(desc, extract.Result{
+		Candidates: []extract.CandidateMatch{{PackageCode: "SEED-GS-001", ConfidenceP: 90, Reasoning: "x"}},
+		Pending:    extract.SignalNotApplicable,
+	})
+	_, router := testServer(t, fake)
+	_, created := doIntake(t, router, desc)
+
+	for i := 0; i < maxEvidenceEntriesPerCase; i++ {
+		body, _ := json.Marshal(AddEvidenceRequest{Note: fmt.Sprintf("entry %d", i)})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/cases/"+created.ID+"/evidence", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("entry %d: expected 200, got %d: %s", i, rec.Code, rec.Body.String())
+		}
+	}
+
+	// One more, past the cap, must be rejected rather than silently
+	// accepted forever.
+	body, _ := json.Marshal(AddEvidenceRequest{Note: "one too many"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cases/"+created.ID+"/evidence", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 once the per-case evidence cap is reached, got %d", rec.Code)
 	}
 }
 

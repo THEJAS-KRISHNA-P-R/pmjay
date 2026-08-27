@@ -408,6 +408,34 @@ func TestBuild_Handoff_NoCitationNoComplaintButHasSummary(t *testing.T) {
 	}
 }
 
+func TestBuild_Handoff_DistressReasonGetsItsOwnSpecificMessage(t *testing.T) {
+	// A family flagged for handoff specifically because they showed
+	// distress needs the volunteer to know that going in — the generic
+	// "genuine ambiguity" text a HandoffMultipleIssues case gets doesn't
+	// carry that signal, and losing it here would mean the one person
+	// positioned to notice never does.
+	distressed := Build(tiering.Decision{
+		Outcome:                   tiering.OutcomeHandoff,
+		HandoffReasons:            []tiering.HandoffReason{tiering.HandoffDistressWithUnclear},
+		ExtractedSituationSummary: "test situation",
+	})
+	if !strings.Contains(distressed.HandoffSummary(), "distress") {
+		t.Errorf("expected the distress-specific handoff reason to mention distress, got: %q", distressed.HandoffSummary())
+	}
+
+	multiIssue := Build(tiering.Decision{
+		Outcome:                   tiering.OutcomeHandoff,
+		HandoffReasons:            []tiering.HandoffReason{tiering.HandoffMultipleIssues},
+		ExtractedSituationSummary: "test situation",
+	})
+	if strings.Contains(multiIssue.HandoffSummary(), "distress") {
+		t.Errorf("a multiple-issues handoff should not carry the distress-specific wording, got: %q", multiIssue.HandoffSummary())
+	}
+	if distressed.HandoffSummary() == multiIssue.HandoffSummary() {
+		t.Error("expected the two handoff reasons to produce distinguishable summaries, got identical text")
+	}
+}
+
 func TestBuild_Amber_PendingReason_AsksTheRightQuestion(t *testing.T) {
 	ds := testDS(t)
 	pkg := pkgOrFatal(t, ds, "SEED-CARD-001")

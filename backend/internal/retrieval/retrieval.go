@@ -33,11 +33,37 @@ import (
 	"github.com/pmjay-advocate/backend/internal/hbp"
 )
 
-// MaxCandidates bounds how many packages get forwarded to the LLM step.
-// Chosen generously relative to the seed dataset size so the shortlist
-// essentially never excludes a real match; on the real ~1,900-code
-// dataset this is the number that actually controls per-query cost.
+// MaxCandidates bounds how many packages get forwarded to the LLM step
+// when keyword scoring found real signal (at least one package scored
+// above zero). Chosen generously relative to the seed dataset size so
+// the shortlist essentially never excludes a real match; on the real
+// ~1,900-code dataset this is the number that actually controls
+// per-query cost.
 const MaxCandidates = 20
+
+// MaxCandidatesWhenBlind bounds the fallback slice used when keyword
+// scoring found ZERO signal — every package scored 0, so "top N by
+// score" is not a ranking at all, just the dataset's on-disk order.
+// This is a materially different situation from the normal MaxCandidates
+// case and deliberately gets a larger allowance: with real signal, a
+// tight shortlist is a considered trade of recall for cost; with no
+// signal, a tight shortlist is pure luck-of-file-order, and the
+// consequence is silently excluding the right answer for exactly the
+// families this system most needs to work for (see the doc comment on
+// Retrieve below for how this is currently reached and confirmed).
+//
+// This is a partial mitigation, not a fix: even 4x MaxCandidates is a
+// small fraction of the eventual ~1,900-code dataset, so a genuinely
+// zero-signal description can still miss the real answer — it just
+// misses less often than at MaxCandidates. The actual fix is one of:
+// language-specific keyword lists added to the HBP data by a qualified
+// translator (not fabricated here — wrong medical terminology in this
+// specific field is actively harmful, not just imprecise), or a cheap
+// translation/pre-classification pass ahead of this keyword layer. That
+// is a product and cost decision, not one this constant can make on its
+// own — revisit this number, and whether it's enough, once real query
+// logs show how often the zero-signal case actually happens.
+const MaxCandidatesWhenBlind = 4 * MaxCandidates
 
 // Candidate is a package paired with the retrieval score that surfaced it,
 // kept only for debugging/observability — internal/tiering and
@@ -53,14 +79,27 @@ type Candidate struct {
 // LLM step can consider it explicitly rather than never seeing it.
 //
 // Retrieve never returns an empty slice for a non-empty dataset: if
-// nothing scores above zero, it falls back to returning every package
-// (bounded by MaxCandidates) so a genuinely novel description still
-// reaches the LLM rather than being silently dropped before it gets a
-// chance at real reasoning. Silently returning nothing here would turn a
-// retrieval miss into a false "no coverage" answer, which is exactly the
-// overclaiming failure mode Section 10 exists to prevent — so this layer
-// is built to fail open toward "let the LLM see more", never toward
-// "decide nothing matches" on its own authority.
+// nothing scores above zero, it falls back to returning a larger slice
+// of the dataset (bounded by MaxCandidatesWhenBlind, not MaxCandidates —
+// see that constant's doc comment for why) so a genuinely novel
+// description still reaches the LLM rather than being silently dropped
+// before it gets a chance at real reasoning. Silently returning nothing
+// here would turn a retrieval miss into a false "no coverage" answer,
+// which is exactly the overclaiming failure mode Section 10 exists to
+// prevent — so this layer is built to fail open toward "let the LLM see
+// more", never toward "decide nothing matches" on its own authority.
+//
+// The zero-signal case is not hypothetical: this package's own keyword
+// matching is ASCII-letters-and-digits only (see tokenize), so a
+// description with no Latin-alphabet or digit substrings anywhere — a
+// short sentence in Malayalam, Tamil, Hindi, etc. native script with no
+// English loanword, proper noun, or number mixed in — tokenizes to
+// nothing, every package scores 0, and "top N by score" stops being a
+// ranking. This is expected to be rarer than the code-mixed case (Indian
+// speech commonly mixes in English medical/technical terms even
+// mid-sentence, which tokenizes and scores normally), but it is
+// reachable, not a contrived edge case — a short, simple description can
+// plausibly contain zero such tokens.
 func Retrieve(ds *hbp.Dataset, description string) []Candidate {
 	tokens := tokenize(description)
 	tokenSet := make(map[string]bool, len(tokens))
@@ -93,10 +132,10 @@ func Retrieve(ds *hbp.Dataset, description string) []Candidate {
 		}
 	} else {
 		// Fail open: nothing scored, so hand the LLM a bounded slice of
-		// everything rather than nothing. See doc comment above.
+		// everything rather than nothing. See doc comments above.
 		limit := len(scored)
-		if limit > MaxCandidates {
-			limit = MaxCandidates
+		if limit > MaxCandidatesWhenBlind {
+			limit = MaxCandidatesWhenBlind
 		}
 		result = scored[:limit]
 	}

@@ -81,12 +81,20 @@ func evidencePrompt(d tiering.Decision) string {
 // handoffSummary builds the full context passed to a NALSA Para Legal
 // Volunteer, so — per Section 12 — nothing has to be re-explained from
 // scratch by a family who may already be exhausted from explaining it
-// once.
+// once. The reason text is deliberately specific per HandoffReason
+// rather than one generic line: HandoffDistressWithUnclear in
+// particular exists to flag that the family's own message showed signs
+// of distress, which is exactly the kind of thing a volunteer should
+// know before they start reading, not something folded into an
+// undifferentiated "this is ambiguous" note.
 func handoffSummary(d tiering.Decision) string {
 	reasonText := "This case involves genuine ambiguity or complexity a guided flow can't safely resolve alone."
 	for _, r := range d.HandoffReasons {
-		if r == tiering.HandoffMultipleIssues {
+		switch r {
+		case tiering.HandoffMultipleIssues:
 			reasonText = "This case bundles more than one separate issue at once."
+		case tiering.HandoffDistressWithUnclear:
+			reasonText = "The family's own message showed signs of distress, and the underlying situation remains unresolved rather than clearly resolved either way — please lead with extra care."
 		}
 	}
 	return fmt.Sprintf(

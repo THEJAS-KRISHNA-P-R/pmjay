@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pmjay-advocate/backend/internal/document"
@@ -45,6 +46,27 @@ const (
 	// worst case to something a single instance can absorb from many
 	// concurrent callers at once.
 	maxRequestBodyBytes = 64 * 1024
+
+	// Evidence fields are short, specific facts by design (Section 7
+	// Step 6: a name, a time, a one-line note) — these caps are
+	// generous relative to that intent, not an attempt to fit a real
+	// note into the smallest space possible. Without them,
+	// maxRequestBodyBytes was the only limit on any one field, meaning
+	// a single field could balloon to ~64KB. That matters here
+	// specifically because every evidence append triggers a full
+	// rewrite of the case store to disk (see store.FileStore.flush) —
+	// unlike the intake endpoint, this one has no per-call LLM cost to
+	// otherwise bound abuse.
+	maxStaffNameLength  = 200
+	maxApproxTimeLength = 100
+	maxNoteLength       = 2000
+
+	// maxEvidenceEntriesPerCase bounds how many evidence entries a
+	// single case can accumulate. A real family capturing evidence
+	// during one dispute needs a handful of entries at most; this
+	// leaves generous headroom while still bounding the worst case —
+	// again because of the full-rewrite-per-append cost above.
+	maxEvidenceEntriesPerCase = 20
 )
 
 // handleIntake implements POST /api/v1/cases — Section 7's Steps 1
@@ -221,8 +243,40 @@ func (s *Server) handleAddEvidence(w http.ResponseWriter, r *http.Request) {
 		writeBodyDecodeError(w, err)
 		return
 	}
+
+	req.StaffName = strings.TrimSpace(req.StaffName)
+	req.ApproxTime = strings.TrimSpace(req.ApproxTime)
+	req.Note = strings.TrimSpace(req.Note)
+
 	if req.StaffName == "" && req.ApproxTime == "" && req.Note == "" {
 		writeError(w, http.StatusBadRequest, "at least one of staff_name, approx_time, or note is required", "")
+		return
+	}
+	if len(req.StaffName) > maxStaffNameLength {
+		writeError(w, http.StatusBadRequest, "staff_name is too long", "")
+		return
+	}
+	if len(req.ApproxTime) > maxApproxTimeLength {
+		writeError(w, http.StatusBadRequest, "approx_time is too long", "")
+		return
+	}
+	if len(req.Note) > maxNoteLength {
+		writeError(w, http.StatusBadRequest, "note is too long", "")
+		return
+	}
+
+	existing, found, err := s.Store.Get(r.Context(), id)
+	if err != nil {
+		s.Logger.Error("store get failed", "error", err, "case_id", id)
+		writeError(w, http.StatusInternalServerError, "could not save evidence", "")
+		return
+	}
+	if !found {
+		writeError(w, http.StatusNotFound, "case not found", "")
+		return
+	}
+	if len(existing.Evidence) >= maxEvidenceEntriesPerCase {
+		writeError(w, http.StatusBadRequest, "this case already has the maximum number of evidence entries", "")
 		return
 	}
 

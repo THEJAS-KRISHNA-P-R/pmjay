@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createCase, ApiError } from "@/lib/api";
+import { createCase, ApiError, RateLimitError } from "@/lib/api";
 import { saveCaseToHistory } from "@/lib/caseHistory";
-import { IconSpinner, IconArrowRight } from "./icons";
+import { IconSpinner, IconArrowRight, IconClock } from "./icons";
 
 const EXAMPLE_PROMPTS = [
   "My mother needs gallbladder surgery, hospital says our card won't cover it",
@@ -37,6 +37,10 @@ export function IntakeForm() {
   const [isPending, startTransition] = useTransition();
   const [stageIndex, setStageIndex] = useState(0);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Rate limiting countdown state
+  const [rateLimitCountdown, setRateLimitCountdown] = useState<number | null>(null);
+  const rateLimitTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isPending) {
@@ -53,8 +57,33 @@ export function IntakeForm() {
     };
   }, [isPending]);
 
+  // Clean up rate limit timer on unmount
+  useEffect(() => {
+    return () => {
+      if (rateLimitTimer.current) clearInterval(rateLimitTimer.current);
+    };
+  }, []);
+
+  function startRateLimitCountdown(seconds: number) {
+    setRateLimitCountdown(seconds);
+    if (rateLimitTimer.current) clearInterval(rateLimitTimer.current);
+    
+    rateLimitTimer.current = setInterval(() => {
+      setRateLimitCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          if (rateLimitTimer.current) clearInterval(rateLimitTimer.current);
+          setError(null);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (rateLimitCountdown !== null) return;
+    
     setError(null);
     setFallbackGuidance(null);
 
@@ -70,7 +99,10 @@ export function IntakeForm() {
         saveCaseToHistory(result);
         router.push(`/cases/${result.id}`);
       } catch (err) {
-        if (err instanceof ApiError) {
+        if (err instanceof RateLimitError) {
+          setError(err.message);
+          startRateLimitCountdown(err.retryAfterSeconds);
+        } else if (err instanceof ApiError) {
           setError(err.message);
           setFallbackGuidance(err.fallbackGuidance ?? null);
         } else {
@@ -79,6 +111,8 @@ export function IntakeForm() {
       }
     });
   }
+
+  const isFormDisabled = isPending || rateLimitCountdown !== null;
 
   return (
     <div className="space-y-6">
@@ -99,7 +133,7 @@ export function IntakeForm() {
               className="field p-4 sm:p-5 text-base leading-relaxed resize-none focus:ring-2 focus:ring-emerald-600/20"
               placeholder="For example: My father needs an operation, the hospital says our Ayushman card won't cover it..."
               lang=""
-              disabled={isPending}
+              disabled={isFormDisabled}
             />
           </div>
         </div>
@@ -107,11 +141,15 @@ export function IntakeForm() {
         {error && (
           <div
             role="alert"
-            className="rounded-2xl border border-tier-red-border bg-tier-red-bg p-4 sm:p-5 animate-fade-in-up"
+            className={`rounded-2xl border p-4 sm:p-5 animate-fade-in-up ${
+              rateLimitCountdown !== null 
+                ? "border-tier-amber-border bg-tier-amber-bg text-tier-amber-text" 
+                : "border-tier-red-border bg-tier-red-bg text-tier-red-text"
+            }`}
           >
-            <p className="font-bold text-tier-red-text">{error}</p>
+            <p className="font-bold">{error}</p>
             {fallbackGuidance && (
-              <p className="mt-2 text-xs sm:text-sm text-tier-red-text leading-relaxed pt-2 opacity-90">{fallbackGuidance}</p>
+              <p className="mt-2 text-xs sm:text-sm leading-relaxed pt-2 opacity-90">{fallbackGuidance}</p>
             )}
           </div>
         )}
@@ -119,13 +157,18 @@ export function IntakeForm() {
         <div className="flex items-center justify-between pt-1">
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isFormDisabled}
             className="btn-primary tap-target w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
           >
             {isPending ? (
               <>
                 <IconSpinner className="h-5 w-5 animate-spin text-white shrink-0" />
                 <span aria-live="polite">{PROCESSING_STAGES[stageIndex]}</span>
+              </>
+            ) : rateLimitCountdown !== null ? (
+              <>
+                <IconClock className="h-4 w-4 text-white shrink-0" />
+                <span aria-live="polite">Please wait {rateLimitCountdown}s</span>
               </>
             ) : (
               <>

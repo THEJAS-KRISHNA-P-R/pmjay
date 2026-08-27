@@ -9,7 +9,7 @@ import (
 // into each other or depend on the ambient environment they run in.
 func clearEnv(t *testing.T) {
 	t.Helper()
-	keys := []string{"PORT", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_MODEL", "GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "DATA_FILE_PATH", "ALLOWED_ORIGINS", "RATE_LIMIT_PER_MINUTE"}
+	keys := []string{"PORT", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_MODEL", "GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "DATA_FILE_PATH", "ALLOWED_ORIGINS", "RATE_LIMIT_PER_MINUTE", "RATE_LIMIT_PER_HOUR", "MAX_CONCURRENT_LLM", "GENERAL_RATE_LIMIT_PER_MINUTE", "GENERAL_RATE_LIMIT_PER_HOUR"}
 	for _, k := range keys {
 		old, existed := os.LookupEnv(k)
 		os.Unsetenv(k)
@@ -36,6 +36,25 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	if cfg.RateLimitPerMinute <= 0 {
 		t.Error("expected a positive default rate limit")
+	}
+	if cfg.RateLimitPerHour <= 0 {
+		t.Error("expected a positive default hourly rate limit")
+	}
+	if cfg.RateLimitPerHour < cfg.RateLimitPerMinute {
+		t.Errorf("expected the hourly limit (%d) to be at least the per-minute limit (%d) — a sane hourly backstop shouldn't bind tighter than a single minute already would",
+			cfg.RateLimitPerHour, cfg.RateLimitPerMinute)
+	}
+	if cfg.MaxConcurrentLLM <= 0 {
+		t.Error("expected a positive default max concurrent LLM calls")
+	}
+	if cfg.GeneralRateLimitPerMinute <= 0 {
+		t.Error("expected a positive default general rate limit")
+	}
+	if cfg.GeneralRateLimitPerHour <= 0 {
+		t.Error("expected a positive default general hourly rate limit")
+	}
+	if cfg.GeneralRateLimitPerMinute <= cfg.RateLimitPerMinute {
+		t.Errorf("expected the general limit (%d) to be more generous than intake's cost-control limit (%d) by default", cfg.GeneralRateLimitPerMinute, cfg.RateLimitPerMinute)
 	}
 	if len(cfg.AllowedOrigins) == 0 {
 		t.Error("expected a non-empty default allowed origins list")
@@ -64,6 +83,10 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	os.Setenv("CLAUDE_MODEL", "claude-custom-model")
 	os.Setenv("ALLOWED_ORIGINS", "https://example.com, https://other.example.com")
 	os.Setenv("RATE_LIMIT_PER_MINUTE", "25")
+	os.Setenv("RATE_LIMIT_PER_HOUR", "300")
+	os.Setenv("MAX_CONCURRENT_LLM", "7")
+	os.Setenv("GENERAL_RATE_LIMIT_PER_MINUTE", "40")
+	os.Setenv("GENERAL_RATE_LIMIT_PER_HOUR", "400")
 
 	cfg, err := Load()
 	if err != nil {
@@ -84,6 +107,18 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	if cfg.RateLimitPerMinute != 25 {
 		t.Errorf("expected overridden rate limit 25, got %d", cfg.RateLimitPerMinute)
 	}
+	if cfg.RateLimitPerHour != 300 {
+		t.Errorf("expected overridden hourly rate limit 300, got %d", cfg.RateLimitPerHour)
+	}
+	if cfg.MaxConcurrentLLM != 7 {
+		t.Errorf("expected overridden max concurrent LLM calls 7, got %d", cfg.MaxConcurrentLLM)
+	}
+	if cfg.GeneralRateLimitPerMinute != 40 {
+		t.Errorf("expected overridden general rate limit 40, got %d", cfg.GeneralRateLimitPerMinute)
+	}
+	if cfg.GeneralRateLimitPerHour != 400 {
+		t.Errorf("expected overridden general hourly rate limit 400, got %d", cfg.GeneralRateLimitPerHour)
+	}
 }
 
 func TestLoad_InvalidRateLimitFailsLoudly(t *testing.T) {
@@ -99,6 +134,70 @@ func TestLoad_NegativeRateLimitFailsLoudly(t *testing.T) {
 	os.Setenv("RATE_LIMIT_PER_MINUTE", "-5")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected Load() to fail on a non-positive RATE_LIMIT_PER_MINUTE")
+	}
+}
+
+func TestLoad_InvalidRateLimitPerHourFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("RATE_LIMIT_PER_HOUR", "not-a-number")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-numeric RATE_LIMIT_PER_HOUR")
+	}
+}
+
+func TestLoad_NegativeRateLimitPerHourFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("RATE_LIMIT_PER_HOUR", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-positive RATE_LIMIT_PER_HOUR")
+	}
+}
+
+func TestLoad_InvalidMaxConcurrentLLMFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("MAX_CONCURRENT_LLM", "not-a-number")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-numeric MAX_CONCURRENT_LLM")
+	}
+}
+
+func TestLoad_NegativeMaxConcurrentLLMFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("MAX_CONCURRENT_LLM", "-1")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-positive MAX_CONCURRENT_LLM")
+	}
+}
+
+func TestLoad_InvalidGeneralRateLimitPerMinuteFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("GENERAL_RATE_LIMIT_PER_MINUTE", "not-a-number")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-numeric GENERAL_RATE_LIMIT_PER_MINUTE")
+	}
+}
+
+func TestLoad_NegativeGeneralRateLimitPerMinuteFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("GENERAL_RATE_LIMIT_PER_MINUTE", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-positive GENERAL_RATE_LIMIT_PER_MINUTE")
+	}
+}
+
+func TestLoad_InvalidGeneralRateLimitPerHourFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("GENERAL_RATE_LIMIT_PER_HOUR", "not-a-number")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-numeric GENERAL_RATE_LIMIT_PER_HOUR")
+	}
+}
+
+func TestLoad_NegativeGeneralRateLimitPerHourFailsLoudly(t *testing.T) {
+	clearEnv(t)
+	os.Setenv("GENERAL_RATE_LIMIT_PER_HOUR", "-20")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected Load() to fail on a non-positive GENERAL_RATE_LIMIT_PER_HOUR")
 	}
 }
 
