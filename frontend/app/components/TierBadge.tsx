@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
 import type { Outcome } from "@/lib/types";
 import {
-  IconCheck,
-  IconHelpCircle,
-  IconInfo,
+  IconShieldCheck,
+  IconClipboardList,
+  IconX,
   IconHalfCoverage,
-  IconLifeBuoy,
+  IconUser,
   type IconProps,
 } from "./icons";
 
@@ -34,8 +34,8 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   green: {
     label: "This looks covered",
     description: "The scheme should be paying for this.",
-    Icon: IconCheck,
-    iconName: "check",
+    Icon: IconShieldCheck,
+    iconName: "shield-check",
     panelBg: "bg-tier-green-bg",
     panelBorder: "border-tier-green-border",
     iconBg: "bg-tier-green-icon",
@@ -44,8 +44,8 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   amber: {
     label: "Needs one more check",
     description: "Not a clear yes or no yet: here's what to ask.",
-    Icon: IconHelpCircle,
-    iconName: "help-circle",
+    Icon: IconClipboardList,
+    iconName: "clipboard-list",
     panelBg: "bg-tier-amber-bg",
     panelBorder: "border-tier-amber-border",
     iconBg: "bg-tier-amber-icon",
@@ -54,8 +54,8 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   red: {
     label: "This is correctly not covered",
     description: "Not a dispute: a straight answer about the rule.",
-    Icon: IconInfo,
-    iconName: "info",
+    Icon: IconX,
+    iconName: "x",
     panelBg: "bg-tier-red-bg",
     panelBorder: "border-tier-red-border",
     iconBg: "bg-tier-red-icon",
@@ -74,8 +74,8 @@ export const TIER_STYLES: Record<Outcome, TierStyle> = {
   handoff: {
     label: "Let's get you a person",
     description: "This needs a human (connecting you with free legal help).",
-    Icon: IconLifeBuoy,
-    iconName: "life-buoy",
+    Icon: IconUser,
+    iconName: "user",
     panelBg: "bg-tier-handoff-bg",
     panelBorder: "border-tier-handoff-border",
     iconBg: "bg-tier-handoff-icon",
