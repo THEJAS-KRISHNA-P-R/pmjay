@@ -287,10 +287,9 @@ func decidePackage(ds *hbp.Dataset, sortedCandidates []extract.CandidateMatch, p
 	// require pre-authorisation.
 	if pkg.RequiresPreauth {
 		llmSaysPending := llmPending == extract.SignalPendingLikely
-		llmUnclear := llmPending == extract.SignalUnclear
 		patternSaysPending := pattern == PatternPendingLikely
 
-		if llmSaysPending || patternSaysPending || llmUnclear {
+		if llmSaysPending || patternSaysPending {
 			return OutcomeAmber, Decision{
 				Outcome:                  OutcomeAmber,
 				AmberReasons:             []AmberReason{ReasonPendingPreauth},
