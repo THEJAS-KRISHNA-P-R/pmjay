@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this project or its dataset, cite it as below."
+title: "PMJAY Denial Advocate"
+abstract: >-
+  A free, independent tool and agent skill that helps Indian families check
+  whether a hospital's Ayushman Bharat (PM-JAY) coverage denial is correct,
+  search verified Health Benefit Package codes and indicative rates, and find
+  a care-first next step.
+type: software
+license: MIT
+repository-code: "https://github.com/THEJAS-KRISHNA-P-R/pmjay"
+url: "https://github.com/THEJAS-KRISHNA-P-R/pmjay"
+version: "1.0.0"
+date-released: "2026-10-24"
+keywords:
+  - ayushman bharat
+  - pmjay
+  - health insurance
+  - patient rights
+  - health benefit package
+  - india
+  - legal aid
+  - denial management
+  - public interest
+authors:
+  - name: "PMJAY Advocate contributors"
+  - name: "Thejas Krishna P R"
+    affiliation: "Independent public-interest project"
+preferred-citation:
+  type: software
+  title: "PMJAY Denial Advocate"
+  year: 2026
+  version: "1.0.0"
+  license: MIT
+  url: "https://github.com/THEJAS-KRISHNA-P-R/pmjay"
