@@ -1,0 +1,184 @@
+[
+ {
+  "package_name": "Laparoscopic Cholecystectomy",
+  "specialty": "General Surgery",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "gallbladder",
+   "gall bladder",
+   "stone",
+   "stones",
+   "bile",
+   "laparoscopic",
+   "keyhole surgery",
+   "operation for stones"
+  ],
+  "confidence_notes": "Commonly confused in family descriptions with open cholecystectomy; treat both as this package unless the family explicitly says a prior laparoscopic attempt failed.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology (confirmed via web search during this build, Aug 2026). Code and rate are placeholders pending extraction from the actual NHA HBP 2.2 master file per docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Open Appendectomy",
+  "specialty": "General Surgery",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "appendix",
+   "appendicitis",
+   "stomach pain operation",
+   "emergency stomach surgery"
+  ],
+  "confidence_notes": "Emergency presentations are common; do not let urgency itself push this toward amber — urgency is a treatment-priority signal, not a coverage-confidence signal.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Inguinal Hernia Repair (Unilateral)",
+  "specialty": "General Surgery",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "hernia",
+   "swelling in groin",
+   "lump",
+   "rupture"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Coronary Artery Bypass Grafting (CABG)",
+  "specialty": "Cardiology",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "bypass surgery",
+   "open heart surgery",
+   "heart bypass"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Diagnostic Coronary Angiography",
+  "specialty": "Cardiology",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "angiogram",
+   "heart test",
+   "dye test",
+   "cardiac test"
+  ],
+  "confidence_notes": "A diagnostic-only visit does not by itself imply a subsequent procedure is covered; if the family's description conflates 'the test' with 'the operation', this is a genuine disambiguation case, not a confident match either way.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Caesarean Section (C-Section) Delivery",
+  "specialty": "Obstetrics & Gynaecology",
+  "requires_preauth": false,
+  "common_description_keywords": [
+   "c-section",
+   "caesarean",
+   "cesarean",
+   "operation delivery",
+   "stitches delivery"
+  ],
+  "confidence_notes": "Newborn care under the same admission is a genuinely distinct scope question from the mother's own delivery package — see test case 'Maternity, amber' in the extended test-case bank. Do not silently assume newborn care is bundled; this is a real amber case, not a lookup failure.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Normal Vaginal Delivery",
+  "specialty": "Obstetrics & Gynaecology",
+  "requires_preauth": false,
+  "common_description_keywords": [
+   "normal delivery",
+   "natural birth",
+   "delivery"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Abdominal Hysterectomy",
+  "specialty": "Obstetrics & Gynaecology",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "uterus removal",
+   "womb operation",
+   "hysterectomy"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Total Knee Replacement (Unilateral)",
+  "specialty": "Orthopaedics",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "knee replacement",
+   "knee operation",
+   "knee joint surgery"
+  ],
+  "confidence_notes": "Frequently described alongside an unrelated cosmetic add-on in the same billing conversation — see test case 'Orthopaedic, red-adjacent' in the extended test-case bank. A mixed bill must be split into its covered and excluded components, never accepted or rejected as one unit.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Total Hip Replacement (Unilateral)",
+  "specialty": "Orthopaedics",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "hip replacement",
+   "hip operation",
+   "hip joint surgery"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Closed Reduction and Internal Fixation, Long Bone Fracture",
+  "specialty": "Orthopaedics",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "fracture surgery",
+   "broken bone operation",
+   "rod",
+   "plate surgery",
+   "fixation"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Cataract Surgery with IOL Implantation (Phacoemulsification)",
+  "specialty": "Ophthalmology",
+  "requires_preauth": false,
+  "common_description_keywords": [
+   "cataract",
+   "eye operation",
+   "eye surgery",
+   "lens surgery"
+  ],
+  "confidence_notes": "Empanelment is speciality-specific — a hospital empanelled for Cardiology is not automatically empanelled for Ophthalmology. See test case 'Speciality-empanelment edge case' in the extended test-case bank: prior card use for an unrelated specialty at the same hospital is not evidence this specialty is covered there.",
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Tonsillectomy",
+  "specialty": "ENT",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "tonsils operation",
+   "throat surgery"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Transurethral Resection of Prostate (TURP)",
+  "specialty": "Urology",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "prostate operation",
+   "urine blockage surgery"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ },
+ {
+  "package_name": "Craniotomy for Traumatic Brain Injury",
+  "specialty": "Neurosurgery",
+  "requires_preauth": true,
+  "common_description_keywords": [
+   "head injury operation",
+   "brain surgery",
+   "skull operation"
+  ],
+  "source_note": "Package name/specialty is real, published PMJAY terminology. Code and rate are placeholders — see docs/DATA_SOURCES.md."
+ }
+]
