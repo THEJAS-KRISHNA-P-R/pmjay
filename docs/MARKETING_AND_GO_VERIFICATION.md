@@ -1,5 +1,12 @@
 # Marketing site & Go verification — handover
 
+> **Historical note (October 2026):** this document records an audit from
+> the 26 August 2026 restructure. The SEO gaps it lists below — missing
+> Open Graph/Twitter metadata, JSON-LD, and generated `sitemap.ts`/`robots.ts`
+> — have since been closed. See the root `README.md`, `frontend/lib/site.ts`,
+> and `docs/DEPLOYMENT.md` for the current state. The Go verification
+> procedure in Part 1 is still valid if an edit is made without a toolchain.
+
 Two concrete, unfinished pieces of work from the 26 August 2026 restructure
 (`../HANDOVER.md`'s addendum of that date has the full writeup of what
 *did* land). This document is the "how," not another status narrative —

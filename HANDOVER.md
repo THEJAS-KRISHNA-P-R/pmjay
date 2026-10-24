@@ -151,3 +151,59 @@ One real process gap this session's own build output caught: `/cases/new` was in
 4. No screenshot/visual verification was possible in this sandbox — everything above is confirmed via type-checking, unit/integration tests, and build success, not via actually looking at the rendered pages in a browser.
 
 Same closing note as every session before this one: don't invent additional tasks beyond this list just to have something to do. If none of this is what's actually wanted next, ask.
+
+---
+
+## Addendum — October 2026: public-release hardening
+
+This pass prepared the repository for public release. The earlier addenda
+above are historical and some of their numbers and file paths are now
+stale; this section describes the current state.
+
+### Backend
+
+- Added `GET /api/v1/packages` — deterministic, no-LLM package search with
+  pagination and specialty filtering. Unverified records never expose a
+  rate: `packageToSearchResult` is the only mapping path and returns early
+  when `verified` is false.
+- Added `DELETE /api/v1/cases/{id}` (204/404) as the backend half of the
+  DPDP erasure right.
+- Added `CASE_RETENTION_DAYS` (default 30) with an hourly purge, and
+  `INTAKE_TIMEOUT_SECONDS` (default 45, range 5-120).
+- Added `TRUST_PROXY_HEADERS` (default false). `clientIP` no longer trusts
+  `X-Forwarded-For` unconditionally.
+- Intake now distinguishes `503` (no provider key), `504` (provider timeout),
+  and `502` (provider failure), each with care-first fallback guidance.
+- `GET /api/v1/health` reports `extraction_ready` separately from `status`.
+- Case responses include `persisted`. Storage failures still return the
+  computed guidance but mark it unpersisted.
+- Security headers + `Cache-Control: no-store`; case IDs redacted in logs.
+- `api.Options` replaced the seven-argument `NewRouter` signature.
+
+### Frontend
+
+- New `/packages` search page (no LLM) with verified/name-only labelling.
+- Case pages gained delete-with-confirmation.
+- Privacy, settings, homepage, guide, how-it-works, and safety copy were
+  corrected to describe server storage, AI processing, the 30-day retention
+  window, and actual dataset coverage (300 verified / 15 name-only).
+- SEO: `metadataBase`, title template, canonical URLs, Open Graph/Twitter,
+  `WebApplication` JSON-LD, generated `app/sitemap.ts`, `app/robots.ts`,
+  `/llms.txt`, and `/llms-full.txt`, all driven by `NEXT_PUBLIC_SITE_URL`.
+
+### Marketplace skill
+
+- New standalone `skills/pmjay-denial-advocate/` bundle (agent skill, no
+  frontend code) built and validated by `skills/package.py`.
+- Dataset split is enforced at build and packaging time: 300 verified
+  records with rates, 15 unverified records with every rate field absent.
+- `skills/agensi-listing.md` holds marketplace copy; the ZIP is in
+  `dist/` and is git-ignored.
+
+### Verification at the end of this pass
+
+```bash
+cd backend   && go build ./... && go vet ./... && gofmt -l . && go test ./... -race -cover
+cd ../frontend && npm run lint && npx tsc --noEmit && npm test && npm run build
+cd ..        && python skills/package.py --check
+```

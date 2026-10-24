@@ -2,23 +2,27 @@
 
 Base path: `/api/v1`. All request and response bodies are JSON. All examples on this page are **real, actually-generated output** — captured by running the live handlers against `extract.FakeClient` (the same deterministic test double the automated tests use), not hand-typed. DTOs are defined in `backend/internal/api/dto.go`; this document mirrors them.
 
-Five routes exist. Only one costs money to call.
+Seven routes exist. Only one costs money to call.
 
 | Method | Path | Costs an LLM call? | Rate-limited? |
 |---|---|---|---|
-| `POST` | `/api/v1/cases` | Yes — the one paid call per family interaction | Yes |
-| `GET` | `/api/v1/cases/{id}` | No | No |
-| `GET` | `/api/v1/cases/{id}/document` | No | No |
-| `POST` | `/api/v1/cases/{id}/evidence` | No | No |
+| `POST` | `/api/v1/cases` | Yes — the one paid call per family interaction | Yes (intake limits) |
+| `GET` | `/api/v1/cases/{id}` | No | Yes (general limits) |
+| `DELETE` | `/api/v1/cases/{id}` | No | Yes (general limits) |
+| `GET` | `/api/v1/cases/{id}/document` | No | Yes (general limits) |
+| `POST` | `/api/v1/cases/{id}/evidence` | No | Yes (general limits) |
+| `GET` | `/api/v1/packages` | No — plain dataset search | Yes (general limits) |
 | `GET` | `/api/v1/health` | No (no store access either) | No |
 
-Middleware order, applied to every route: panic recovery → structured logging → CORS → rate limiting (intake only). See `internal/api/router.go`.
+Middleware order, applied to every route: panic recovery → structured logging → security headers → `Cache-Control: no-store` → CORS → rate limiting (intake only) → timeout and concurrency limiting (intake only). See `internal/api/router.go`.
+
+Two separate rate limiters exist. The **intake** limiter guards the one endpoint that spends money on a model call. The **general** limiter is a deliberately more generous flat allowance shared by every other store-touching endpoint; it exists to bound abuse, not to ration a family's use of their own case. `/api/v1/health` is outside both.
 
 ---
 
 ## `POST /api/v1/cases`
 
-Runs Section 7's Steps 1–4 in one request: retrieval pre-filter, the one LLM extraction call, deterministic tiering, and templated response construction. This is the request that triggers a paid call to whichever provider `LLM_PROVIDER` selects (see `docs/DEPLOYMENT.md`), which is why it's the only rate-limited endpoint (10 requests/minute per client IP by default — see `RATE_LIMIT_PER_MINUTE` in `docs/DEPLOYMENT.md`).
+Runs Section 7's Steps 1–4 in one request: retrieval pre-filter, the one LLM extraction call, deterministic tiering, and templated response construction. This is the request that triggers a paid call to whichever provider `LLM_PROVIDER` selects (see `docs/DEPLOYMENT.md`), which is why it's the only endpoint on the intake limiter (1 request/minute and 20/hour per client IP by default — see `RATE_LIMIT_PER_MINUTE` and `RATE_LIMIT_PER_HOUR` in `backend/.env.example`). The whole request is bounded by `INTAKE_TIMEOUT_SECONDS` (45 s default), which is shorter than the server's write timeout so a slow provider produces the care-first error below rather than a dropped connection.
 
 **Request**
 
@@ -39,6 +43,8 @@ Runs Section 7's Steps 1–4 in one request: retrieval pre-filter, the one LLM e
   "id": "80e5d440-ec7b-4be1-8886-0b752413a9e9",
   "outcome": "green",
   "citation": "Laparoscopic Cholecystectomy",
+  "description": "Gallbladder removal for confirmed stones; hospital demanding upfront payment.",
+  "persisted": true,
   "care_first_message": "Get treatment first. Dispute the money after. Always. If you can pay now and settle the dispute later, or move to a different hospital, do that — do not let this disagreement delay or stop care.",
   "tier_message": "Based on what you've described — gallbladder removal for confirmed stones; hospital demanding upfront payment. — this matches a package that is listed as covered under PMJAY: Laparoscopic Cholecystectomy (General Surgery), a listed PMJAY package. This hospital should not be asking for payment for this procedure if they are empanelled for General Surgery.",
   "action_steps": [
@@ -54,6 +60,8 @@ Runs Section 7's Steps 1–4 in one request: retrieval pre-filter, the one LLM e
 
 `care_first_message` is present on **every** outcome, unconditionally — see `docs/SAFETY_DESIGN.md` §1. `citation`, `action_steps`, `complaint_text`, and `hospital_script` are omitted (via `omitempty`) on outcomes where they don't apply — Amber never produces `complaint_text` (nothing to complain about yet), Red and pure-Handoff never produce either (see `docs/SAFETY_DESIGN.md` and `internal/response/builder_test.go`'s `TestBuild_Amber_NeverProducesAComplaint` / `TestBuild_Red_NeverProducesAComplaintOrActionSteps`). `outcome` is one of `green`, `amber`, `red`, `mixed`, `handoff`.
 
+`persisted` is `true` unless the answer was computed but could not be written to the case store. In that case the guidance is still returned and still valid, but the frontend must not offer follow-up that needs a server record (evidence, deletion, reopening the link). See "A storage failure" below.
+
 **Error responses**
 
 | Status | Cause | Body |
@@ -61,12 +69,17 @@ Runs Section 7's Steps 1–4 in one request: retrieval pre-filter, the one LLM e
 | `400` | Malformed JSON | `{"error": "invalid JSON body"}` |
 | `400` | Description under 5 characters | `{"error": "description is too short to be meaningful"}` |
 | `400` | Description over 4000 characters | `{"error": "description is too long"}` |
-| `429` | Rate limit exceeded for this IP | `{"error": "too many requests, please wait a moment and try again", "fallback_guidance": "If this is urgent, call the PMJAY helpline directly at 14555."}` |
-| `502` | The LLM extraction call itself failed (network, auth, timeout — whichever provider `LLM_PROVIDER` selects) | `{"error": "the system could not process this request right now", "fallback_guidance": "<care-first text> In the meantime, call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working."}` |
+| `413` | Request body over the size limit | `{"error": "request body too large"}` |
+| `429` | Intake rate limit exceeded for this IP | `{"error": "too many requests, please wait a moment and try again", "fallback_guidance": "If this is urgent, call the PMJAY helpline directly at 14555."}` |
+| `502` | The LLM extraction call failed (network, auth, provider error) | `{"error": "the system could not process this request right now", "fallback_guidance": "<care-first text> In the meantime, call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working."}` |
+| `503` | This deployment has no provider key configured, so intake cannot run at all | `{"error": "the guided case analysis is not available on this server right now", "fallback_guidance": "<care-first text> Call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working."}` |
+| `504` | The provider took longer than `INTAKE_TIMEOUT_SECONDS` | `{"error": "the analysis took too long and was stopped", "fallback_guidance": "<care-first text> Please try once more, or call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working."}` |
 
-The `502` case is deliberate, not an oversight: Section 10's care-first rule is written as an absolute, so an infrastructure failure is not treated as an exception to it. `fallback_guidance` carries the same care-first text plus a human fallback that doesn't depend on this system working at all — see `internal/api/handlers.go`'s `handleIntake` and `lib/api.ts`'s `ApiError` on the frontend side, which exists specifically to surface this field rather than discard it on a thrown error.
+All three upstream failures are deliberate, not oversights: Section 10's care-first rule is written as an absolute, so an infrastructure failure is not treated as an exception to it. `fallback_guidance` carries the same care-first text plus a human fallback that doesn't depend on this system working at all — see `internal/api/handlers.go`'s `handleIntake` and `lib/api.ts`'s `ApiError` on the frontend side, which exists specifically to surface this field rather than discard it on a thrown error.
 
-A storage failure after a successful extraction does **not** fail the request — the computed response is still returned to the family; only the ability to re-fetch or add evidence to that case later is affected. This is logged server-side, not surfaced as an error to the caller (see the comment on that branch in `handleIntake`).
+The distinction matters to the person retrying: `503` is a deployment missing a key, so retrying now is pointless and `14555` is the real next step. `504` means the provider was slow, so one retry is reasonable. `502` means the provider failed, so retry, then use the helpline. `GET /api/v1/health` reports `extraction_ready: false` for the `503` case without failing the liveness check.
+
+A storage failure after a successful extraction does **not** fail the request — the computed response is still returned to the family with `persisted: false`; only the ability to re-fetch, add evidence to, or delete that case later is affected. This is logged server-side (with the case ID redacted) rather than surfaced as an error that would discard useful guidance (see the comment on that branch in `handleIntake`).
 
 Real captured example, `400` (description `"hi"`, 2 characters):
 
@@ -104,6 +117,25 @@ Fetches a previously created case. Same response shape as the `POST` above.
 |---|---|---|
 | `404` | No case with this ID | `{"error": "case not found"}` |
 | `500` | Store read failed | `{"error": "could not retrieve case"}` |
+
+---
+
+## `DELETE /api/v1/cases/{id}`
+
+Permanently removes a case and its evidence from the store. This is the backend half of the DPDP erasure right described on `/privacy`: there is no soft delete, no archive, and no copy retained afterwards.
+
+**Response — `204 No Content`**
+
+No body. A repeat call (or any unknown ID) returns `404` rather than `204`, so a client can distinguish "deleted now" from "was never there". The frontend's `deleteCase` treats both as success, because the family's goal — that the record is gone — is met either way.
+
+**Error responses**
+
+| Status | Cause | Body |
+|---|---|---|
+| `404` | No case with this ID | `{"error": "case not found"}` |
+| `500` | Store write failed | `{"error": "could not delete case"}` |
+
+Cases are also deleted automatically after `CASE_RETENTION_DAYS` (30 by default) of inactivity, by an hourly purge at startup and on a timer.
 
 ---
 
@@ -178,6 +210,63 @@ All three fields are individually optional — `{"note": "..."}` alone is valid 
 
 ---
 
+## `GET /api/v1/packages`
+
+Deterministic search over the embedded Health Benefit Package index. **No model call** — this is the endpoint the `/packages` page uses, and it keeps working on a deployment with no provider key configured.
+
+**Query parameters** (all optional)
+
+| Name | Type | Rule |
+|---|---|---|
+| `q` | string | Free text matched against package name, code, specialty, and keywords. Empty returns the whole index. |
+| `specialty` | string | Case-insensitive exact specialty filter (e.g. `Cardiology`). |
+| `limit` | int | 1–100, default 25. |
+| `offset` | int | 0–10000, default 0. |
+
+**Response — `200 OK`**
+
+```json
+{
+  "query": "dialysis",
+  "specialties": ["Cardiology", "General Surgery", "Nephrology", "..."],
+  "total": 3,
+  "count": 3,
+  "offset": 0,
+  "results": [
+    {
+      "package_code": "SR-001",
+      "package_name": "Haemodialysis",
+      "specialty": "Nephrology",
+      "indicative_rate_inr": 1500,
+      "rate_type": "per_day",
+      "per_diem_rates": {
+        "routine_ward_inr": 1500,
+        "hdu_inr": 2500,
+        "icu_no_vent_inr": 4000,
+        "icu_vent_inr": 5000
+      },
+      "requires_preauth": true,
+      "verified": true
+    }
+  ]
+}
+```
+
+`specialties` is always the full sorted list from the dataset, regardless of the current filter, so the client can render a stable filter menu. `total` is the number of matches before pagination; `count` is the number returned in this page.
+
+**Rate stripping is structural.** `packageToSearchResult` is the only path from an `hbp.Package` to this API, and it returns early for a record with `verified: false`. An unverified record therefore carries its name, specialty, and pre-auth flag but **no** `package_code`, `indicative_rate_inr`, `rate_max_inr`, `rate_type`, or `per_diem_rates` — not zero, not a placeholder, absent. A packaging test and a handler test both assert this, because a leaked placeholder would be read as a citation.
+
+`package_code` is withheld for the same reason a rate is: the dataset's internal `SEED-` identifiers are development placeholders, not codes that appear in any government schedule. Searching `hernia` returns `Inguinal Hernia Repair (Unilateral)` with `"verified": false` and no `package_code` key at all, rather than an identifier someone might quote at a billing desk.
+
+**Error responses**
+
+| Status | Cause | Body |
+|---|---|---|
+| `400` | `limit` outside 1–100 or not an integer | `{"error": "limit must be an integer between 1 and 100"}` |
+| `400` | `offset` outside 0–10000 or not an integer | `{"error": "offset must be an integer between 0 and 10000"}` |
+
+---
+
 ## `GET /api/v1/health`
 
 A dependency-free liveness check — no LLM call, no store access — suitable for a load balancer, uptime monitor, or Docker `HEALTHCHECK` to poll frequently at zero cost.
@@ -186,13 +275,18 @@ A dependency-free liveness check — no LLM call, no store access — suitable f
 
 ```json
 {
-  "exclusions_loaded": "4",
-  "packages_loaded": "315",
-  "status": "ok"
+  "status": "ok",
+  "packages_loaded": 315,
+  "exclusions_loaded": 4,
+  "extraction_ready": true
 }
 ```
 
-`packages_loaded` / `exclusions_loaded` reflect whatever dataset is embedded at build time — 315 packages (300 verified against sourced government rate schedules, the remainder still placeholder) and 4 exclusion categories today (see `docs/DATA_SOURCES.md`); these numbers will grow further as HBP data coverage continues (see `docs/OPEN_QUESTIONS.md`). This endpoint never returns a non-200 status in the current implementation — a genuinely dead process won't respond at all, which is itself the signal a load balancer needs.
+`packages_loaded` / `exclusions_loaded` reflect whatever dataset is embedded at build time — 315 packages (300 verified against sourced government rate schedules, 15 recognised by name only) and 4 exclusion categories today (see `docs/DATA_SOURCES.md`); these numbers will grow as HBP data coverage continues (see `docs/OPEN_QUESTIONS.md`).
+
+`extraction_ready` is deliberately separate from `status`. "The process is up" and "intake can actually work" are different facts, and conflating them is how a deployment with a missing API key passes its health check while every real request returns `503`. `status` stays `ok` so a liveness probe does not restart a healthy process over a configuration problem a restart cannot fix. Readiness is determined by the extractor implementing `extract.Availability`; a fake used in tests can report either value.
+
+This endpoint never returns a non-200 status in the current implementation — a genuinely dead process won't respond at all, which is itself the signal a load balancer needs.
 
 ---
 

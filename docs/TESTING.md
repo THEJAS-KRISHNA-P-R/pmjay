@@ -8,7 +8,7 @@ This document does two things: maps what's actually automated to the spec's own 
 cd backend
 go build ./...              # compiles clean
 go vet ./...                 # no vet warnings
-go test ./... -cover -race   # 268 tests, 10 packages, race detector on
+go test ./... -cover -race   # 329 tests, 10 packages, race detector on
 
 cd ../frontend
 npm test                     # 77 tests, 12 files (see "Frontend" section below)
@@ -16,22 +16,22 @@ npm test                     # 77 tests, 12 files (see "Frontend" section below)
 
 No live `ANTHROPIC_API_KEY` is required for any of this — see "Why this is testable offline at all" below.
 
-## What's automated: 268 backend tests, 10 packages
+## What's automated: 329 backend tests, 10 packages
 
 | Package | What it covers | Tests | Coverage |
 |---|---|---:|---:|
-| `internal/hbp` | Dataset schema, `go:embed` loader, `validate()`'s full invariant set, `rate_type` extension | 32 | 91.7% |
-| `internal/retrieval` | Zero-API-cost keyword pre-filter, package and exclusion scoring | 15 | 100.0% |
-| `internal/extract` | LLM extraction across all 3 providers (`ClaudeClient`, `GroqClient`, `GeminiClient`), raw `net/http`, no SDKs, plus bounded retry/backoff for transient failures on each | 49 | 82.3% |
-| `internal/tiering` | Deterministic green/amber/red/mixed/handoff decision logic | 24 | 94.5% |
-| `internal/response` | Templated response text, the care-first and disclaimer structural guarantees, tiered/per-diem citation rendering | 21 | 95.8% |
-| `internal/store` | File-backed case persistence, atomic writes | 17 | 86.8% |
+| `internal/hbp` | Dataset schema, `go:embed` loader, `validate()`'s full invariant set, `rate_type` extension, verified/unverified split, placeholder-code rejection | 35 | 92.1% |
+| `internal/retrieval` | Zero-API-cost keyword pre-filter, package and exclusion scoring, package search, stem matching | 21 | 97.7% |
+| `internal/extract` | LLM extraction across all 3 providers (`ClaudeClient`, `GroqClient`, `GeminiClient`), raw `net/http`, no SDKs, bounded retry/backoff, availability reporting | 49 | 80.2% |
+| `internal/tiering` | Deterministic green/amber/red/mixed/handoff decision logic | 24 | 94.4% |
+| `internal/response` | Templated response text, the care-first and disclaimer structural guarantees, tiered/per-diem citation rendering | 22 | 95.8% |
+| `internal/store` | File-backed case persistence, atomic writes, delete, retention purge | 23 | 86.3% |
 | `internal/document` | PDF rendering — encoding/layout engine, all 5 outcomes, structural PDF validity, disclaimer placement | 51 | 99.6% |
-| `internal/config` | Env-based configuration, LLM provider selection and validation | 13 | 96.9% |
-| `internal/api` | HTTP handlers, middleware, routing, request-size limits, IP-spoofing-resistant rate limiting | 38 | 91.9% |
-| `cmd/server` | Process orchestration — config→dataset→store→extractor→server wiring, graceful shutdown, every failure path including `os.Exit(1)` via subprocess re-exec | 8 | 95.6% |
+| `internal/config` | Env-based configuration, provider selection, retention/proxy/timeout validation | 27 | 97.0% |
+| `internal/api` | HTTP handlers, middleware, routing, request-size limits, IP-spoofing-resistant rate limiting, package search (rate and code stripping), delete, readiness, 503/504, log redaction | 69 | 90.6% |
+| `cmd/server` | Process orchestration — config→dataset→store→extractor→server wiring, graceful shutdown, every failure path including `os.Exit(1)` via subprocess re-exec | 8 | 88.1% |
 
-Coverage is highest exactly where it matters most — `tiering` and `response`, the two packages that decide and phrase what a family is told, sit at 94–96%, `retrieval` sits at a genuine 100%, and `document`, `config`, and `hbp` all sit at 91–99.6%. `extract` at 82.3% is the one package where a straight percentage reads lower than its actual test rigor suggests: adding two full provider clients (`GroqClient`, `GeminiClient`) roughly doubled the package's line count, and each new client's untested surface is the same shape as `ClaudeClient`'s always was (`WithGroqHTTPClient`/`WithGeminiHTTPClient` — options that exist for tests to use, not code paths tests exercise themselves) — not new, undertested business logic. Every package's remaining gap beyond that is a specific, named, principled exception rather than an untested surface — not "we didn't get to it," but "here's exactly why this one line can't be exercised without making the production code worse to satisfy a test":
+Coverage is highest exactly where it matters most — `tiering` and `response`, the two packages that decide and phrase what a family is told, sit at 94–96%, `retrieval` sits at 97.7%, and `document`, `config`, `hbp`, and `api` all sit at 90–99.6%. `extract` at 80.2% is the one package where a straight percentage reads lower than its actual test rigor suggests: adding two full provider clients (`GroqClient`, `GeminiClient`) roughly doubled the package's line count, and each new client's untested surface is the same shape as `ClaudeClient`'s always was (`WithGroqHTTPClient`/`WithGeminiHTTPClient` — options that exist for tests to use, not code paths tests exercise themselves) — not new, undertested business logic. Every package's remaining gap beyond that is a specific, named, principled exception rather than an untested surface — not "we didn't get to it," but "here's exactly why this one line can't be exercised without making the production code worse to satisfy a test":
 
 - **`hbp.Load()`'s and `cmd/server`'s `run()`'s error branches for `hbp.Load()` failing**: this reads a `//go:embed`-compiled dataset — the files are baked into the binary at build time, so `Load()` returning an error is a build-time defect, not a runtime condition any test can trigger without hand-editing the embedded JSON and rebuilding, which isn't a legitimate per-test technique. `validate()` itself — the actual logic that would catch a malformed record — is fully tested directly against synthetic bad fixtures (see the `TestValidate_*` tests); it's specifically the "what if the embedded file read itself fails" branch that's structurally unreachable.
 - **`document`'s defensive `panic`** in the xref-table writer: unreachable given the package's own fixed, gap-free object-numbering scheme — see `internal/document/serialize.go`.
@@ -101,7 +101,7 @@ Nothing in this codebase should be read as evidence toward any of these three. S
 
 ## Frontend: full component coverage plus one page-level integration test
 
-`frontend/package.json`'s `test` script (Vitest + React Testing Library + jsdom) now covers 74 tests across 12 files — up from 35/5:
+`frontend/package.json`'s `test` script (Vitest + React Testing Library + jsdom) now covers 77 tests across 12 files — up from 35/5:
 
 ```bash
 cd frontend
@@ -121,13 +121,13 @@ What's covered:
 - **`IntakeForm.test.tsx`** — client-side validation duplicates the backend's exact 5-character minimum (`internal/api/dto.go`) specifically to save a wasted, paid API round-trip on an obviously-too-short description; this suite is what actually catches that duplication silently drifting out of sync. Also covers the `ApiError` + `fallback_guidance` rendering path end to end (docs/API.md's documented 502 contract) and the example-prompt buttons.
 - **`EvidenceForm.test.tsx`** — the at-least-one-field rule mirrored from `internal/api/handlers.go`'s evidence handler, plus the success/error/re-render paths.
 - **`lib/api.test.ts`** — request construction for all three JSON endpoints, the case a naive implementation gets wrong (a non-JSON error body — e.g. a proxy-level 502 HTML page — falling back to a generic message instead of throwing a confusing parse error on top of the original failure), and `caseDocumentUrl`'s URL-encoding, plus a check that it's a pure URL builder that never itself calls `fetch` (see `lib/api.ts`'s doc comment on why the PDF endpoint is deliberately not wrapped the way the JSON endpoints are).
-- **`app/case/[id]/page.test.tsx`** — see below.
+- **`app/cases/[id]/page.test.tsx`** — see below.
 
 ### The integration test, and why it's not quite Playwright
 
 This sandbox's `bash_tool` network allowlist (see the system configuration, or just try `npx playwright install` and watch it fail to reach a browser-binary CDN) doesn't extend to downloading a real browser, so a literal Playwright-driven end-to-end test wasn't achievable in this environment — stated plainly rather than claimed and quietly not delivered.
 
-What was achievable, and is a genuine step up from component-level testing: `app/case/[id]/page.test.tsx` renders the **actual, real `CasePage` component** — not a reconstruction of it — with only the network boundary mocked (`@/lib/api`'s `getCase`, `next/navigation`'s `useParams`). This catches the specific class of bug isolated component tests structurally cannot: wiring. A prop passed under the wrong name, a conditional that hides a panel that should be showing, two components that individually render fine but were never actually composed correctly — none of that shows up when each component is tested alone. Concretely, this test:
+What was achievable, and is a genuine step up from component-level testing: `app/cases/[id]/page.test.tsx` renders the **actual, real `CasePage` component** — not a reconstruction of it — with only the network boundary mocked (`@/lib/api`'s `getCase`, `next/navigation`'s `useParams`). This catches the specific class of bug isolated component tests structurally cannot: wiring. A prop passed under the wrong name, a conditional that hides a panel that should be showing, two components that individually render fine but were never actually composed correctly — none of that shows up when each component is tested alone. Concretely, this test:
 
 - confirms the loading → loaded transition never shows both states at once,
 - confirms the care-first message renders for **every one of the five outcomes** — the page-level version of `internal/response/builder_test.go`'s `TestBuild_CareFirstMessageIsAlwaysPresent_EveryOutcome`, checking the guarantee survives all the way to what a family's screen actually shows, not just what the backend's JSON contains,

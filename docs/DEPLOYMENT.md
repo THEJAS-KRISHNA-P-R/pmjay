@@ -17,7 +17,10 @@ Browser
 
 The frontend and backend are **different origins** in both paths below (Vercel's domain vs. wherever the backend is reachable), so `NEXT_PUBLIC_API_BASE_URL` must be set at frontend build time to the backend's full public URL, and the backend's `ALLOWED_ORIGINS` must list the frontend's Vercel URL. `lib/api.ts` defaults to same-origin `/api` only if you instead choose to serve both under one domain through Caddy — see the aside at the bottom for that variant.
 
-**One operational requirement either way, worth being explicit about**: the Go process should never be reachable directly from the public internet — only Caddy should be. `internal/api/middleware.go`'s `clientIP()` trusts the *last* `X-Forwarded-For` value for per-IP rate limiting — the entry Caddy itself appends, not whatever a client sent — which is what makes it safe against a caller simply forging that header when Caddy is the only path in. That safety is contingent on the topology, not something the code alone can guarantee: if the Go port is ever also reachable directly, a caller hitting it straight can set a single `X-Forwarded-For` value with no comma, which becomes indistinguishable from a proxy-appended one. Bind the Go process to `127.0.0.1` at the OS/firewall level (or a cloud security group rule restricting the port to localhost) so Caddy is the only thing anyone outside the host can reach on 80/443.
+**Two operational requirements either way, worth being explicit about**:
+
+1. The Go process should never be reachable directly from the public internet — only Caddy should be. Client IPs are only believed from `X-Forwarded-For` / `X-Real-IP` when `TRUST_PROXY_HEADERS=true`, and the safe value for that setting depends entirely on this topology: set it **true** behind Caddy (which appends/overwrites the header), and leave it **false** if the Go port is ever directly reachable, because a direct caller can forge the header and mint unlimited rate-limit identities. Bind the Go process to `127.0.0.1` at the OS/firewall level (or a cloud security group rule restricting the port to localhost) so Caddy is the only thing anyone outside the host can reach on 80/443.
+2. `CASE_RETENTION_DAYS` defaults to 30, and the purge is the only thing that deletes an abandoned case. If a deployment deliberately sets it to 0, a separate retention job owns deletion — see the privacy page's promise, which must stay true.
 
 ---
 
@@ -68,7 +71,7 @@ RestartSec=5s
 WantedBy=multi-user.target
 ```
 
-`/opt/pmjay-advocate/.env` holds the real environment values — copy `backend/.env.example`, fill in the API key for whichever `LLM_PROVIDER` you're using (`ANTHROPIC_API_KEY`, `GROQ_API_KEY`, or `GEMINI_API_KEY` — see `internal/config/README.md` for the full provider-selection story), and set `ALLOWED_ORIGINS` to your actual Vercel URL. Then:
+`/opt/pmjay-advocate/.env` holds the real environment values — copy `backend/.env.example`, fill in the API key for whichever `LLM_PROVIDER` you're using (`ANTHROPIC_API_KEY`, `GROQ_API_KEY`, or `GEMINI_API_KEY` — see `internal/config/README.md` for the full provider-selection story), set `ALLOWED_ORIGINS` to your actual Vercel URL, and set `TRUST_PROXY_HEADERS=true` because Caddy is the only path in. Then:
 
 ```bash
 sudo useradd -r -s /usr/sbin/nologin pmjay   # once
@@ -82,7 +85,7 @@ journalctl -u pmjay-advocate -f              # structured JSON logs, tail them l
 
 ### 4. Caddy: reverse proxy `/api` to the Go binary
 
-If a Caddy instance is already running on the host for another project (e.g. `yourfee.in`), add a new site block for this project's own domain/subdomain rather than trying to path-merge into the existing one — cleanest separation, and each project's `Caddyfile` block stays independently editable:
+If a Caddy instance is already running on the host for another site, add a new site block for this project's own domain/subdomain rather than trying to path-merge into the existing one — cleanest separation, and each site's `Caddyfile` block stays independently editable:
 
 ```caddyfile
 api.pmjay-advocate.example.com {
@@ -108,8 +111,12 @@ npm install -g vercel   # if not already
 vercel link
 vercel env add NEXT_PUBLIC_API_BASE_URL production
 # paste: https://api.pmjay-advocate.example.com/api
+vercel env add NEXT_PUBLIC_SITE_URL production
+# paste: https://your-frontend.vercel.app (no trailing slash)
 vercel --prod
 ```
+
+`NEXT_PUBLIC_SITE_URL` is the public origin used for canonical tags, Open Graph URLs, `sitemap.xml`, `robots.txt`, and the generated `llms.txt` files (see `frontend/lib/site.ts`). If it is unset, the build falls back to `http://localhost:3000` and every one of those files will point at localhost — correct for `npm run dev`, wrong for production. Set it to the final public origin, not the deployment URL you expect to replace.
 
 Then set `ALLOWED_ORIGINS` back on the backend (in `/opt/pmjay-advocate/.env`) to the exact Vercel production URL Vercel gives you, and `systemctl restart pmjay-advocate` to pick it up. CORS will reject the frontend's requests until this matches exactly — `corsMiddleware` does an exact string match against the `Origin` header, no wildcards, no subdomain matching.
 
@@ -142,6 +149,7 @@ fly secrets set ANTHROPIC_API_KEY=sk-ant-...
 # see internal/config/README.md — instead of (or alongside) the above.
 # Example: fly secrets set LLM_PROVIDER=groq GROQ_API_KEY=gsk_...
 fly secrets set ALLOWED_ORIGINS=https://your-frontend.vercel.app
+fly secrets set TRUST_PROXY_HEADERS=true   # Fly's edge proxy is the only path in
 fly volumes create pmjay_data --size 1   # 1GB is wildly generous for a single JSON file
 ```
 
@@ -166,7 +174,7 @@ Fly's free allowance covers this comfortably — the workload is one small reque
 
 ### Frontend: identical Vercel steps as Path 1
 
-Same as above, just point `NEXT_PUBLIC_API_BASE_URL` at the `fly.dev` URL instead of a custom domain.
+Same as above, just point `NEXT_PUBLIC_API_BASE_URL` at the `fly.dev` URL instead of a custom domain. Set `NEXT_PUBLIC_SITE_URL` to the frontend's public origin in both paths; it drives every canonical, sitemap, and `llms.txt` URL.
 
 ---
 
@@ -185,7 +193,7 @@ pmjay-advocate.example.com {
 }
 ```
 
-This trades away Vercel's free CDN/edge network for one less moving part (no CORS config, no `NEXT_PUBLIC_API_BASE_URL` to keep in sync) — a reasonable trade for a hackathon-stage deploy on a host you already control, less so if you want Vercel's edge caching for the frontend specifically.
+This trades away Vercel's free CDN/edge network for one less moving part (no CORS config, no `NEXT_PUBLIC_API_BASE_URL` to keep in sync) — a reasonable trade for a hackathon-stage deploy on a host you already control, less so if you want Vercel's edge caching for the frontend specifically. It still sits behind Caddy, so `TRUST_PROXY_HEADERS=true` applies here too, and `NEXT_PUBLIC_SITE_URL` is still required for correct canonical/sitemap URLs.
 
 ---
 
@@ -224,13 +232,23 @@ Restoring is just copying a snapshot back to `data/cases.json` and restarting th
 
 ## Environment variables
 
-See `backend/.env.example` for the full list with defaults. The settings that must be changed from their defaults for any real deployment: the API key for whichever `LLM_PROVIDER` is active (`ANTHROPIC_API_KEY` by default — empty by default, the server starts without it but every intake request fails clearly until it's set; `GROQ_API_KEY`/`GEMINI_API_KEY` if `LLM_PROVIDER` is set to `groq`/`gemini` instead) and `ALLOWED_ORIGINS` (defaults to `http://localhost:3000`, i.e. local dev only).
+See `backend/.env.example` for the full list with defaults. The settings that must be changed from their defaults for any real deployment: the API key for whichever `LLM_PROVIDER` is active (`ANTHROPIC_API_KEY` by default — empty by default, the server starts without it but every intake request returns `503` until it's set; `GROQ_API_KEY`/`GEMINI_API_KEY` if `LLM_PROVIDER` is set to `groq`/`gemini` instead), `ALLOWED_ORIGINS` (defaults to `http://localhost:3000`, i.e. local dev only), and `TRUST_PROXY_HEADERS` (defaults to `false`; set `true` only behind a proxy that overwrites the header). On the frontend, `NEXT_PUBLIC_SITE_URL` must be set to the public origin.
+
+`CASE_RETENTION_DAYS` (30) and `INTAKE_TIMEOUT_SECONDS` (45, range 5–120) have safe defaults; change them deliberately, not incidentally.
 
 ## Verifying a deployment
 
 ```bash
 curl https://<backend-url>/api/v1/health
-# {"status":"ok","packages_loaded":"315","exclusions_loaded":"4"}
+# {"status":"ok","packages_loaded":315,"exclusions_loaded":4,"extraction_ready":true}
+
+# Deterministic package search — must work even with no provider key:
+curl 'https://<backend-url>/api/v1/packages?q=dialysis&limit=3'
+
+# Confirm an unverified record never exposes a rate:
+curl 'https://<backend-url>/api/v1/packages?q=appendicectomy' | grep -i rate
 ```
 
-A `200` with those three keys means: the binary is running, the embedded dataset loaded, and the process is reachable through whatever proxy sits in front of it. It does **not** confirm the active provider's API key (`ANTHROPIC_API_KEY`, `GROQ_API_KEY`, or `GEMINI_API_KEY`, whichever `LLM_PROVIDER` selects) is valid — that's only exercised by an actual `POST /api/v1/cases` call, which costs a real (tiny, or on Groq/Gemini's free tier, zero) API charge, so it's not something to hit repeatedly just to check config.
+A `200` from health means the binary is running, the embedded dataset loaded, and the process is reachable through whatever proxy sits in front of it. `extraction_ready: false` means no usable provider key is configured — the server is healthy, but intake will return `503`, so the helpline is the working path. Health does **not** confirm the key is valid; only an actual `POST /api/v1/cases` does, which costs a real (tiny, or on Groq/Gemini's free tier, zero) API charge, so don't hit it repeatedly just to check config.
+
+On the frontend, after deploying, check `https://<frontend-url>/robots.txt`, `/sitemap.xml`, and `/llms.txt`. Every URL in those files should show the `NEXT_PUBLIC_SITE_URL` origin. If they show `localhost`, the variable was missing at build time and the SEO surface is wrong even though the app works.

@@ -32,7 +32,7 @@ Every one of the `internal/` subdirectories has its own `README.md` with the act
 go build ./...              # compiles clean, zero external deps to fetch
 go vet ./...
 gofmt -l .                   # should print nothing
-go test ./... -cover -race   # 268 tests, 10 packages, as of this writing
+go test ./... -cover -race   # 300+ tests across every package
 ```
 
 Or via `make check` — see the `Makefile`, which wraps exactly this sequence plus `build`/`build-arm64`/`build-amd64`/`clean` targets. No `ANTHROPIC_API_KEY` is required for any of the above; see `docs/TESTING.md` for why the whole suite runs fully offline.
@@ -43,7 +43,12 @@ To actually run the server:
 cp .env.example .env    # then fill in ANTHROPIC_API_KEY if you want real case intake to work
 go run ./cmd/server
 curl localhost:8080/api/v1/health
+curl 'localhost:8080/api/v1/packages?q=dialysis'
 ```
+
+The server starts and serves `/api/v1/health` and `/api/v1/packages` even with no provider key. Only intake needs one; without it, `POST /api/v1/cases` returns `503` with a care-first message and the helpline number, and health reports `"extraction_ready": false`. See `docs/API.md` for all seven routes, including `DELETE /api/v1/cases/{id}` (erasure) and package search (deterministic, no model call).
+
+Two settings worth knowing before deploying: `TRUST_PROXY_HEADERS` (default `false` — set `true` only behind a proxy that overwrites the header) and `CASE_RETENTION_DAYS` (default 30 — an hourly purge deletes idle cases). `backend/.env.example` documents every variable.
 
 ## Why zero third-party dependencies, briefly
 
