@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { getCase, ApiError } from "@/lib/api";
-import { saveCaseToHistory, touchLastViewed, getCaseHistoryEntry } from "@/lib/caseHistory";
+import { useParams, useRouter } from "next/navigation";
+import { getCase, deleteCase, ApiError } from "@/lib/api";
+import {
+  saveCaseToHistory,
+  touchLastViewed,
+  getCaseHistoryEntry,
+  removeCaseFromHistory,
+} from "@/lib/caseHistory";
 import type { CaseResponse } from "@/lib/types";
 import { AppShell } from "@/app/components/AppShell";
 import { CareFirstBanner } from "@/app/components/CareFirstBanner";
@@ -15,7 +20,7 @@ import { EvidenceForm } from "@/app/components/EvidenceForm";
 import { HandoffPanel } from "@/app/components/HandoffPanel";
 import { CaseDocumentPanel } from "@/app/components/CaseDocumentPanel";
 import { ComplaintStatusTracker } from "@/app/components/ComplaintStatusTracker";
-import { IconSpinner, IconAlertTriangle, IconMessageText } from "@/app/components/icons";
+import { IconSpinner, IconAlertTriangle, IconMessageText, IconTrash } from "@/app/components/icons";
 
 interface Section {
   id: string;
@@ -24,10 +29,32 @@ interface Section {
 
 export default function CaseWorkspacePage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [caseData, setCaseData] = useState<CaseResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string>("overview");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!caseData || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCase(caseData.id);
+      removeCaseFromHistory(caseData.id);
+      router.push("/dashboard");
+    } catch (err) {
+      setDeleteError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not delete this case. Please try again, or clear it from your browser history in Settings.",
+      );
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -255,6 +282,71 @@ export default function CaseWorkspacePage() {
                 />
               </section>
             )}
+
+            {/* Right to erasure, in the place the family can actually
+                find it. Deleting removes the record from the backend and
+                this browser's list; there is no soft delete and no copy
+                left behind. */}
+            <section
+              id="delete-case"
+              aria-labelledby="delete-case-heading"
+              className="scroll-mt-24 rounded-2xl border border-sand-200 bg-sand-25 p-5 sm:p-6"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="space-y-1.5 max-w-xl">
+                  <h2 id="delete-case-heading" className="text-sm sm:text-base font-bold text-sand-900">
+                    Delete this case
+                  </h2>
+                  <p className="text-xs sm:text-sm text-sand-600 leading-relaxed font-medium">
+                    This permanently removes the description, outcome, and any evidence you
+                    added from the server, and removes it from this browser&rsquo;s list. It cannot
+                    be undone. Print or save the PDF first if you still need it.
+                  </p>
+                  {deleteError && (
+                    <p role="alert" className="text-xs font-bold text-tier-red-text">
+                      {deleteError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="shrink-0">
+                  {confirmDelete ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="inline-flex items-center gap-2 rounded-xl border border-tier-red-border bg-tier-red-bg px-4 py-2 text-xs sm:text-sm font-bold text-tier-red-text hover:bg-tier-red-icon/50 disabled:opacity-50 tap-target"
+                      >
+                        {deleting ? (
+                          <IconSpinner className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <IconTrash className="h-4 w-4" />
+                        )}
+                        <span>{deleting ? "Deleting…" : "Yes, delete permanently"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        className="btn-secondary tap-target px-4 py-2 text-xs sm:text-sm"
+                      >
+                        Keep it
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-sand-300 bg-white px-4 py-2 text-xs sm:text-sm font-bold text-sand-800 hover:border-tier-red-border hover:text-tier-red-text tap-target"
+                    >
+                      <IconTrash className="h-4 w-4" />
+                      <span>Delete this case</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       )}

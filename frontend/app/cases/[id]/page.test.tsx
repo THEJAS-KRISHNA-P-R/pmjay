@@ -25,6 +25,9 @@ vi.mock("next/navigation", () => ({
   // highlight the active nav item — without this, the mock module
   // shadows the real export entirely and AppShell throws.
   usePathname: () => "/cases/case-123",
+  // The workspace's "delete this case" control navigates back to the
+  // dashboard after a successful delete.
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
 }));
 
 const getCaseMock = vi.fn();
