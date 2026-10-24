@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Self-hosted local font files rather than next/font/google — this build
@@ -35,9 +36,52 @@ const fraunces = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "PMJAY Point-of-Denial Advocate",
-  description:
-    "Free help understanding whether a hospital's PMJAY coverage denial is correct, right when you're standing at the billing desk.",
+  // metadataBase resolves every relative URL below (canonical, OG image,
+  // Twitter card) into an absolute one. Set NEXT_PUBLIC_SITE_URL in
+  // production; see lib/site.ts for why it is not hardcoded.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "PMJAY Advocate — is this Ayushman Bharat denial correct?",
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: SITE_NAME,
+    locale: "en_IN",
+    title: "PMJAY Advocate — is this Ayushman Bharat denial correct?",
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "PMJAY Advocate",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "PMJAY Advocate — is this Ayushman Bharat denial correct?",
+    description: SITE_DESCRIPTION,
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  category: "health",
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -47,6 +91,30 @@ export const metadata: Metadata = {
       { url: "/apple-icon.png" },
     ],
   },
+};
+
+// Structured data: one WebApplication node, not a fake review or rating.
+// Search engines penalise invented aggregate ratings, and this project
+// has nothing to invent — the useful, true facts are that it is free,
+// browser-based, and not affiliated with the National Health Authority.
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: "HealthApplication",
+  operatingSystem: "Any",
+  browserRequirements: "Requires JavaScript",
+  inLanguage: "en-IN",
+  isAccessibleForFree: true,
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "INR",
+  },
+  disclaimer:
+    "Independent public-interest project. Not affiliated with or endorsed by the National Health Authority or any hospital. Not legal or medical advice.",
 };
 
 export const viewport: Viewport = {
@@ -76,6 +144,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `try{if(localStorage.getItem('pmjay-advocate:text-scale')==='large'){document.documentElement.setAttribute('data-text-scale','large');}}catch(e){}`,
           }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
       <body className={`${atkinson.variable} ${fraunces.variable} font-sans antialiased min-h-screen flex flex-col`}>

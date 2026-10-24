@@ -11,7 +11,7 @@ const nextConfig = {
   //   - X-Robots-Tag: a case URL should never be indexed or have its
   //     links followed, in the event one is ever discovered by a crawler
   //     (shared publicly by mistake, leaked via an analytics tool, etc).
-  //     robots.txt (public/robots.txt) asks well-behaved crawlers not to
+  //     robots.txt (app/robots.ts) asks well-behaved crawlers not to
   //     visit at all; this is the header-level backstop for crawlers
   //     that fetch anyway or don't respect robots.txt. The same applies
   //     to /dashboard and /settings even though neither has a secret in
