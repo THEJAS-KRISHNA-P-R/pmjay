@@ -3,13 +3,14 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 // clearEnv removes every env var this package reads, so tests don't leak
 // into each other or depend on the ambient environment they run in.
 func clearEnv(t *testing.T) {
 	t.Helper()
-	keys := []string{"PORT", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_MODEL", "GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "DATA_FILE_PATH", "ALLOWED_ORIGINS", "RATE_LIMIT_PER_MINUTE", "RATE_LIMIT_PER_HOUR", "MAX_CONCURRENT_LLM", "GENERAL_RATE_LIMIT_PER_MINUTE", "GENERAL_RATE_LIMIT_PER_HOUR"}
+	keys := []string{"PORT", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "CLAUDE_MODEL", "GROQ_API_KEY", "GROQ_MODEL", "GEMINI_API_KEY", "GEMINI_MODEL", "DATA_FILE_PATH", "ALLOWED_ORIGINS", "RATE_LIMIT_PER_MINUTE", "RATE_LIMIT_PER_HOUR", "MAX_CONCURRENT_LLM", "GENERAL_RATE_LIMIT_PER_MINUTE", "GENERAL_RATE_LIMIT_PER_HOUR", "TRUST_PROXY_HEADERS", "CASE_RETENTION_DAYS", "INTAKE_TIMEOUT_SECONDS"}
 	for _, k := range keys {
 		old, existed := os.LookupEnv(k)
 		os.Unsetenv(k)
@@ -342,5 +343,95 @@ func TestLoadDotEnv_LoadsUnsetVarsAndPreservesSetVars(t *testing.T) {
 	}
 	if got := os.Getenv("GEMINI_API_KEY"); got != "test-gemini-key" {
 		t.Errorf("expected GEMINI_API_KEY to be loaded with quotes stripped, got %q", got)
+	}
+}
+
+func TestLoad_PrivacyAndProxyDefaults(t *testing.T) {
+	clearEnv(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.TrustProxyHeaders {
+		t.Error("TRUST_PROXY_HEADERS must default to false: trusting the header without a proxy lets callers bypass every per-IP limit")
+	}
+	if cfg.CaseRetentionDays != 30 {
+		t.Errorf("expected 30-day default retention, got %d", cfg.CaseRetentionDays)
+	}
+	if cfg.IntakeTimeout != 45*time.Second {
+		t.Errorf("expected 45s default intake timeout, got %v", cfg.IntakeTimeout)
+	}
+}
+
+func TestLoad_ParsesRetentionProxyAndTimeout(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("TRUST_PROXY_HEADERS", "true")
+	t.Setenv("CASE_RETENTION_DAYS", "7")
+	t.Setenv("INTAKE_TIMEOUT_SECONDS", "60")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.TrustProxyHeaders {
+		t.Error("expected TRUST_PROXY_HEADERS=true to be honoured")
+	}
+	if cfg.CaseRetentionDays != 7 {
+		t.Errorf("expected 7 retention days, got %d", cfg.CaseRetentionDays)
+	}
+	if cfg.IntakeTimeout != 60*time.Second {
+		t.Errorf("expected 60s intake timeout, got %v", cfg.IntakeTimeout)
+	}
+}
+
+func TestLoad_ZeroRetentionIsAllowedAndDisablesPurging(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("CASE_RETENTION_DAYS", "0")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.CaseRetentionDays != 0 {
+		t.Errorf("expected 0 to be preserved as the explicit opt-out, got %d", cfg.CaseRetentionDays)
+	}
+}
+
+func TestLoad_RejectsInvalidRetentionAndTimeout(t *testing.T) {
+	cases := []struct{ key, value string }{
+		{"CASE_RETENTION_DAYS", "-1"},
+		{"CASE_RETENTION_DAYS", "not-a-number"},
+		{"INTAKE_TIMEOUT_SECONDS", "4"},
+		{"INTAKE_TIMEOUT_SECONDS", "121"},
+		{"TRUST_PROXY_HEADERS", "sometimes"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
+			clearEnv(t)
+			t.Setenv(tc.key, tc.value)
+			if _, err := Load(); err == nil {
+				t.Fatalf("expected Load to reject %s=%q", tc.key, tc.value)
+			}
+		})
+	}
+}
+
+func TestActiveModelMatchesProvider(t *testing.T) {
+	cfg := Config{
+		LLMProvider: "groq",
+		ClaudeModel: "claude-x",
+		GroqModel:   "groq-x",
+		GeminiModel: "gemini-x",
+	}
+	if got := cfg.ActiveModel(); got != "groq-x" {
+		t.Errorf("expected groq model, got %q", got)
+	}
+	cfg.LLMProvider = "gemini"
+	if got := cfg.ActiveModel(); got != "gemini-x" {
+		t.Errorf("expected gemini model, got %q", got)
+	}
+	cfg.LLMProvider = "anthropic"
+	if got := cfg.ActiveModel(); got != "claude-x" {
+		t.Errorf("expected anthropic model, got %q", got)
 	}
 }

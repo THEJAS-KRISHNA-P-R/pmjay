@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config is the full set of runtime settings this system needs.
@@ -101,6 +102,30 @@ type Config struct {
 	// legitimate use of their own case.
 	GeneralRateLimitPerMinute int
 	GeneralRateLimitPerHour   int
+
+	// TrustProxyHeaders controls whether X-Forwarded-For / X-Real-IP are
+	// believed when identifying a client for rate limiting. It is false
+	// by default because those headers are trivially spoofable by any
+	// direct caller: trusting them without a proxy in front lets one
+	// client mint unlimited identities and bypass every per-IP limit,
+	// including the intake limiter that is this system's main LLM cost
+	// control. Set it to true only when the service is actually behind a
+	// reverse proxy that overwrites the header.
+	TrustProxyHeaders bool
+
+	// CaseRetentionDays is how long an untouched case record may stay on
+	// disk before the hourly purge removes it. Thirty days is long enough
+	// for a real dispute and short enough that the store is not an
+	// indefinite archive of families' health and financial details. Zero
+	// disables purging — a deliberate opt-out for a deployment with a
+	// separate retention process, not a default.
+	CaseRetentionDays int
+
+	// IntakeTimeout bounds one intake request end to end, including the
+	// LLM call. It is shorter than the HTTP server's write timeout so a
+	// slow provider produces this system's own care-first error message
+	// rather than a truncated connection.
+	IntakeTimeout time.Duration
 }
 
 // validLLMProviders is checked by Load — kept as an explicit set rather
@@ -137,6 +162,9 @@ func Load() (Config, error) {
 		MaxConcurrentLLM:          3,
 		GeneralRateLimitPerMinute: 20,
 		GeneralRateLimitPerHour:   200,
+		TrustProxyHeaders:         false,
+		CaseRetentionDays:         30,
+		IntakeTimeout:             45 * time.Second,
 	}
 
 	if !validLLMProviders[cfg.LLMProvider] {
@@ -198,6 +226,36 @@ func Load() (Config, error) {
 		cfg.GeneralRateLimitPerHour = n
 	}
 
+	if raw := os.Getenv("TRUST_PROXY_HEADERS"); raw != "" {
+		v, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: TRUST_PROXY_HEADERS must be true or false, got %q", raw)
+		}
+		cfg.TrustProxyHeaders = v
+	}
+
+	if raw := os.Getenv("CASE_RETENTION_DAYS"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: CASE_RETENTION_DAYS must be an integer, got %q: %w", raw, err)
+		}
+		if n < 0 {
+			return Config{}, fmt.Errorf("config: CASE_RETENTION_DAYS must be zero or positive, got %d", n)
+		}
+		cfg.CaseRetentionDays = n
+	}
+
+	if raw := os.Getenv("INTAKE_TIMEOUT_SECONDS"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("config: INTAKE_TIMEOUT_SECONDS must be an integer, got %q: %w", raw, err)
+		}
+		if n < 5 || n > 120 {
+			return Config{}, fmt.Errorf("config: INTAKE_TIMEOUT_SECONDS must be between 5 and 120, got %d", n)
+		}
+		cfg.IntakeTimeout = time.Duration(n) * time.Second
+	}
+
 	if cfg.Port == "" {
 		return Config{}, fmt.Errorf("config: PORT must not be empty")
 	}
@@ -234,6 +292,21 @@ func (c Config) ActiveAPIKeyEnvVar() string {
 		return "GEMINI_API_KEY"
 	default:
 		return "ANTHROPIC_API_KEY"
+	}
+}
+
+// ActiveModel returns the model name that matches LLMProvider. Logging
+// ClaudeModel unconditionally, as the startup log used to, reported the
+// wrong model on a Groq or Gemini deployment — a small inaccuracy, but
+// exactly the kind that wastes an hour during an incident.
+func (c Config) ActiveModel() string {
+	switch c.LLMProvider {
+	case "groq":
+		return c.GroqModel
+	case "gemini":
+		return c.GeminiModel
+	default:
+		return c.ClaudeModel
 	}
 }
 

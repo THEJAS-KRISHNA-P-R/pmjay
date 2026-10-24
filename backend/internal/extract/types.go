@@ -106,6 +106,15 @@ type Extractor interface {
 	Extract(ctx context.Context, familyDescription string, candidates []CandidatePackageInfo, exclusionCandidates []CandidateExclusionInfo) (Result, error)
 }
 
+// Availability is an optional interface an Extractor can implement to tell
+// the HTTP layer whether it can serve requests at all. Keeping it separate
+// from Extractor means the test fake and every working provider client
+// need no changes: absence of the interface is read as "ready", which is
+// correct for anything that only exists because it has credentials.
+type Availability interface {
+	Available() bool
+}
+
 // CandidatePackageInfo is the trimmed-down package information actually
 // sent to the model — deliberately not the full hbp.Package struct, so
 // that internal fields (ConfidenceNotes meant for engineers, Verified
