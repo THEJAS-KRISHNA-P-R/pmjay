@@ -1,4 +1,9 @@
-import type { CaseResponse, ErrorResponse, AddEvidenceRequest } from "./types";
+import type {
+  CaseResponse,
+  ErrorResponse,
+  AddEvidenceRequest,
+  PackageSearchResponse,
+} from "./types";
 
 // Resolved at build time for a static deploy target (e.g. Vercel), or at
 // request time in the browser for a same-origin reverse-proxy setup —
@@ -47,7 +52,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
       let body: ErrorResponse = { error: "Too many requests. Please wait." };
       try {
         body = (await res.json()) as ErrorResponse;
-      } catch {}
+      } catch {
+        // A proxy-level 429 without a JSON body: keep the generic message
+        // rather than replacing one failure with a parse error.
+      }
       throw new RateLimitError(body.error, isNaN(retryAfter) ? 10 : retryAfter);
     }
 
@@ -88,6 +96,60 @@ export async function addEvidence(
     body: JSON.stringify(entry),
   });
   return handleResponse<CaseResponse>(res);
+}
+
+/**
+ * deleteCase permanently removes a case from the backend.
+ *
+ * A 404 is treated as success: the family's goal is that the record is
+ * gone, and it is. Surfacing "not found" would ask them to care about a
+ * distinction that does not change anything for them.
+ *
+ * This is the only function here that does not go through
+ * handleResponse — a 204 No Content has no JSON body to parse.
+ */
+export async function deleteCase(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/v1/cases/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (res.ok || res.status === 404) {
+    return;
+  }
+  let body: ErrorResponse = { error: `Could not delete this case (status ${res.status}).` };
+  try {
+    body = (await res.json()) as ErrorResponse;
+  } catch {
+    // Non-JSON proxy error: keep the generic message above.
+  }
+  throw new ApiError(body.error, res.status, body.fallback_guidance);
+}
+
+export interface PackageSearchParams {
+  q?: string;
+  specialty?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * searchPackages queries the deterministic, no-LLM package index.
+ *
+ * Deliberately not routed through the intake flow: search must work even
+ * when no model provider is configured, which is exactly the deployment
+ * case where someone most needs to look up a code.
+ */
+export async function searchPackages(
+  params: PackageSearchParams = {},
+): Promise<PackageSearchResponse> {
+  const query = new URLSearchParams();
+  if (params.q) query.set("q", params.q);
+  if (params.specialty) query.set("specialty", params.specialty);
+  if (params.limit) query.set("limit", String(params.limit));
+  if (params.offset) query.set("offset", String(params.offset));
+
+  const suffix = query.toString();
+  const res = await fetch(`${API_BASE_URL}/v1/packages${suffix ? `?${suffix}` : ""}`);
+  return handleResponse<PackageSearchResponse>(res);
 }
 
 /**

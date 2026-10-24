@@ -36,6 +36,11 @@ export interface CaseResponse {
   handoff_summary?: string;
   evidence_prompt?: string;
   evidence?: EvidenceEntry[];
+  /** False only when the backend computed an answer but could not save
+   * it. The guidance is still valid; follow-up features (evidence,
+   * deletion, reopening from another tab) are not available for that
+   * case, so the UI must not offer them. */
+  persisted?: boolean;
 }
 
 export interface ErrorResponse {
@@ -47,6 +52,45 @@ export interface AddEvidenceRequest {
   staff_name?: string;
   approx_time?: string;
   note?: string;
+}
+
+// ---------------------------------------------------------------------
+// Package search (backend/internal/api/dto.go)
+// ---------------------------------------------------------------------
+// A rate is present only on a record whose code and tariff were checked
+// against a published HBP schedule. Unverified records are returned by
+// name so a person can recognise the procedure, with every rate field
+// omitted — never zero, never a placeholder. `package_code` is likewise
+// absent on an unverified record: the dataset's internal SEED- identifier
+// is not a government code and must not be shown as one.
+
+export interface PerDiemRates {
+  routine_ward_inr: number;
+  hdu_inr: number;
+  icu_no_vent_inr: number;
+  icu_vent_inr: number;
+}
+
+export interface PackageSearchResult {
+  package_code?: string;
+  package_name: string;
+  specialty: string;
+  indicative_rate_inr?: number;
+  rate_max_inr?: number;
+  rate_type?: string;
+  per_diem_rates?: PerDiemRates;
+  requires_preauth: boolean;
+  verified: boolean;
+}
+
+export interface PackageSearchResponse {
+  query: string;
+  specialty?: string;
+  specialties: string[];
+  total: number;
+  count: number;
+  offset: number;
+  results: PackageSearchResult[];
 }
 
 // ---------------------------------------------------------------------

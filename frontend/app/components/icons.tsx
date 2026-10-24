@@ -391,3 +391,12 @@ export function IconChevronLeft({ className }: IconProps) {
     </svg>
   );
 }
+
+export function IconSearch({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="16.5" y1="16.5" x2="21" y2="21" />
+    </svg>
+  );
+}

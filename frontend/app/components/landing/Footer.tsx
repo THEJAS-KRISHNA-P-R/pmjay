@@ -3,6 +3,7 @@ import Image from "next/image";
 
 const SITE_LINKS = [
   { href: "/how-it-works", label: "How It Works" },
+  { href: "/packages", label: "Package Search" },
   { href: "/guide", label: "Your Rights" },
   { href: "/faq", label: "FAQ" },
   { href: "/about", label: "About" },
