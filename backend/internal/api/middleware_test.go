@@ -175,7 +175,7 @@ func TestRateLimiter_HourWindowBindsIndependentlyOfMinuteWindow(t *testing.T) {
 
 func TestRateLimitMiddleware_Returns429WhenExceeded(t *testing.T) {
 	rl := newRateLimiter(1, 100000)
-	handler := rateLimitMiddleware(rl, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := rateLimitMiddleware(rl, false, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -400,7 +400,7 @@ func TestClientIP_PrefersLastForwardedForEntry(t *testing.T) {
 	req.RemoteAddr = "10.0.0.1:1234"
 	req.Header.Set("X-Forwarded-For", "203.0.113.5, 10.0.0.1")
 
-	got := clientIP(req)
+	got := clientIP(req, true)
 	if got != "10.0.0.1" {
 		t.Errorf("expected the last X-Forwarded-For entry (the proxy-appended one), got %q", got)
 	}
@@ -413,7 +413,7 @@ func TestClientIP_SingleForwardedForEntryIsTrusted(t *testing.T) {
 	req.RemoteAddr = "10.0.0.1:1234"
 	req.Header.Set("X-Forwarded-For", "203.0.113.5")
 
-	got := clientIP(req)
+	got := clientIP(req, true)
 	if got != "203.0.113.5" {
 		t.Errorf("expected the single X-Forwarded-For entry, got %q", got)
 	}
@@ -423,18 +423,32 @@ func TestClientIP_FallsBackToRemoteAddr(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "198.51.100.7:9999"
 
-	got := clientIP(req)
+	got := clientIP(req, false)
 	if got != "198.51.100.7" {
 		t.Errorf("expected RemoteAddr host without port, got %q", got)
 	}
 }
 
-// TestClientIP_ClientCannotSpoofLeadingForwardedForEntry is the actual
-// security property: a caller prepending an arbitrary fake address to
-// X-Forwarded-For must not change what this system rate-limits them as.
-// This is the exact scenario the fix in clientIP's doc comment describes
-// — before the fix, this test would have failed, because "1.2.3.4"
-// would have been trusted instead of the real, proxy-appended address.
+// TestClientIP_IgnoresForwardedForByDefault is the primary security
+// property: without a trusted proxy in front, X-Forwarded-For must not
+// influence the rate-limit key at all. Otherwise one caller can rotate
+// the header on every request and never exhaust a bucket — which would
+// bypass the intake limiter that caps LLM spend.
+func TestClientIP_IgnoresForwardedForByDefault(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "198.51.100.7:9999"
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	req.Header.Set("X-Real-IP", "5.6.7.8")
+
+	if got := clientIP(req, false); got != "198.51.100.7" {
+		t.Errorf("expected RemoteAddr when proxy headers are not trusted, got %q", got)
+	}
+}
+
+// TestClientIP_ClientCannotSpoofLeadingForwardedForEntry covers the
+// trusted-proxy configuration: even there, a client-supplied leading
+// entry must not become the key. The rightmost entry is the one the
+// proxy appended, so rotating the left side changes nothing.
 func TestClientIP_ClientCannotSpoofLeadingForwardedForEntry(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "10.0.0.1:1234"
@@ -442,12 +456,12 @@ func TestClientIP_ClientCannotSpoofLeadingForwardedForEntry(t *testing.T) {
 	// can send whatever it wants as the value Caddy appends *to* —
 	// simulating exactly that: an attacker-chosen leading value.
 	req.Header.Set("X-Forwarded-For", "1.2.3.4")
-	firstAttemptKey := clientIP(req)
+	firstAttemptKey := clientIP(req, true)
 
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	req2.RemoteAddr = "10.0.0.1:1234"
 	req2.Header.Set("X-Forwarded-For", "9.9.9.9, "+firstAttemptKey)
-	secondAttemptKey := clientIP(req2)
+	secondAttemptKey := clientIP(req2, true)
 
 	if firstAttemptKey != secondAttemptKey {
 		t.Errorf("expected the same rate-limit key across requests from the same real peer regardless of a spoofed leading X-Forwarded-For value, got %q then %q", firstAttemptKey, secondAttemptKey)

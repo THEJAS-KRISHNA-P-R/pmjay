@@ -57,10 +57,6 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	if cfg.ActiveAPIKey() == "" {
-		logger.Warn("no API key set for the configured LLM provider — the server will start, but every case intake request will fail until it is configured", "provider", cfg.LLMProvider, "expected_env_var", cfg.ActiveAPIKeyEnvVar())
-	}
-
 	dataset, err := hbp.Load()
 	if err != nil {
 		return err
@@ -77,7 +73,16 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	logger.Info("extractor ready", "provider", cfg.LLMProvider)
+	if cfg.ActiveAPIKey() == "" {
+		// Serve everything that does not need a model — package search,
+		// health, existing case reads — and let intake answer 503 with
+		// the care-first fallback. A missing secret should degrade one
+		// feature, not take the process down.
+		extractor = extract.Unavailable{Provider: cfg.LLMProvider, EnvVar: cfg.ActiveAPIKeyEnvVar()}
+		logger.Warn("intake disabled: no API key for the configured provider", "provider", cfg.LLMProvider, "expected_env_var", cfg.ActiveAPIKeyEnvVar())
+	} else {
+		logger.Info("extractor ready", "provider", cfg.LLMProvider, "model", cfg.ActiveModel())
+	}
 
 	server := &api.Server{
 		Dataset:   dataset,
@@ -85,20 +90,62 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		Store:     fileStore,
 		Logger:    logger,
 	}
-	handler := api.NewRouter(server, cfg.AllowedOrigins, cfg.RateLimitPerMinute, cfg.RateLimitPerHour, cfg.MaxConcurrentLLM, cfg.GeneralRateLimitPerMinute, cfg.GeneralRateLimitPerHour)
+	handler := api.NewRouter(server, api.Options{
+		AllowedOrigins:       cfg.AllowedOrigins,
+		IntakeRatePerMinute:  cfg.RateLimitPerMinute,
+		IntakeRatePerHour:    cfg.RateLimitPerHour,
+		MaxConcurrentLLM:     cfg.MaxConcurrentLLM,
+		GeneralRatePerMinute: cfg.GeneralRateLimitPerMinute,
+		GeneralRatePerHour:   cfg.GeneralRateLimitPerHour,
+		TrustProxyHeaders:    cfg.TrustProxyHeaders,
+		IntakeTimeout:        cfg.IntakeTimeout,
+	})
+
+	if cfg.CaseRetentionDays > 0 {
+		retention := time.Duration(cfg.CaseRetentionDays) * 24 * time.Hour
+		purge := func() {
+			purgeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+			removed, err := fileStore.PurgeBefore(purgeCtx, time.Now().Add(-retention))
+			if err != nil {
+				logger.Error("case retention purge failed", "error", err)
+				return
+			}
+			if removed > 0 {
+				logger.Info("case retention purge removed expired records", "count", removed, "retention_days", cfg.CaseRetentionDays)
+			}
+		}
+		purge()
+		go func() {
+			ticker := time.NewTicker(time.Hour)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					purge()
+				}
+			}
+		}()
+		logger.Info("case retention enabled", "days", cfg.CaseRetentionDays)
+	}
 
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       120 * time.Second,
+		// The intake handler has its own 45s bound. WriteTimeout must sit
+		// above that, or the connection would be cut before the handler
+		// could send its own care-first timeout message.
+		WriteTimeout: 75 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	serverErr := make(chan error, 1)
 	go func() {
-		logger.Info("listening", "port", cfg.Port, "model", cfg.ClaudeModel)
+		logger.Info("listening", "port", cfg.Port, "provider", cfg.LLMProvider)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}

@@ -206,6 +206,110 @@ func scoreExclusion(e hbp.Exclusion, tokenSet map[string]bool) int {
 	return score
 }
 
+// Search is the public, deterministic package lookup behind
+// GET /api/v1/packages. It differs from Retrieve in three deliberate
+// ways:
+//
+//  1. No LLM and no shortlist fail-open. Search is the user's own query,
+//     so returning nothing for a query that matches nothing is honest;
+//     returning an arbitrary slice of the dataset would look like a
+//     match.
+//  2. It matches stems and prefixes, not just exact tokens, because a
+//     person typing "dialys" or "cholecyst" into a search box should
+//     find the record.
+//  3. An empty query returns every record, ordered by specialty then
+//     name, which is what a browse view needs.
+//
+// It is still English-only, like the underlying dataset. The triage path
+// in SKILL.md already tells an agent to normalise a family's words into
+// English clinical terms before searching.
+//
+// The caller paginates; Search itself returns every match so the HTTP
+// layer can report an honest total instead of "however many fit on this
+// page".
+func Search(ds *hbp.Dataset, query string) []Candidate {
+	tokens := tokenize(query)
+	scored := make([]Candidate, 0, len(ds.Packages))
+	for _, p := range ds.Packages {
+		score := 0
+		if len(tokens) > 0 {
+			score = searchScore(p, tokens)
+		}
+		if len(tokens) == 0 || score > 0 {
+			scored = append(scored, Candidate{Package: p, Score: score})
+		}
+	}
+
+	sort.SliceStable(scored, func(i, j int) bool {
+		if scored[i].Score != scored[j].Score {
+			return scored[i].Score > scored[j].Score
+		}
+		// A verified record is a better search result than an unverified
+		// name with the same score: it can actually answer "what is the
+		// code and rate?"
+		if scored[i].Package.Verified != scored[j].Package.Verified {
+			return scored[i].Package.Verified
+		}
+		if scored[i].Package.Specialty != scored[j].Package.Specialty {
+			return scored[i].Package.Specialty < scored[j].Package.Specialty
+		}
+		return scored[i].Package.PackageName < scored[j].Package.PackageName
+	})
+
+	return scored
+}
+
+func searchScore(p hbp.Package, tokens []string) int {
+	score := 0
+	for _, kw := range p.CommonDescriptionKeywords {
+		kwTokens := tokenize(kw)
+		if len(kwTokens) == 0 {
+			continue
+		}
+		allPresent := true
+		for _, kt := range kwTokens {
+			if !tokenPresent(kt, tokens) {
+				allPresent = false
+				break
+			}
+		}
+		if allPresent {
+			score += 3 * len(kwTokens)
+		}
+	}
+	for _, t := range tokenize(p.PackageName) {
+		if tokenPresent(t, tokens) {
+			score += 2
+		}
+	}
+	for _, t := range tokenize(p.Specialty) {
+		if tokenPresent(t, tokens) {
+			score++
+		}
+	}
+	return score
+}
+
+// tokenPresent reports an exact match or a meaningful shared prefix, so a
+// partial query ("dialys", "cholecyst") still finds the record. The
+// four-character floor keeps one- and two-letter queries from matching
+// half the dataset.
+func tokenPresent(recordToken string, queryTokens []string) bool {
+	for _, q := range queryTokens {
+		if q == recordToken {
+			return true
+		}
+		shorter, longer := q, recordToken
+		if len(shorter) > len(longer) {
+			shorter, longer = longer, shorter
+		}
+		if len(shorter) >= 4 && strings.HasPrefix(longer, shorter) {
+			return true
+		}
+	}
+	return false
+}
+
 func ensureUnspecifiedIncluded(candidates []Candidate, ds *hbp.Dataset) []Candidate {
 	for _, c := range candidates {
 		if c.Package.PackageCode == "UNSPECIFIED" {

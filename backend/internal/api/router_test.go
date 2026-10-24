@@ -35,7 +35,14 @@ func routerWithLimits(t *testing.T, intakePerMinute, intakePerHour, maxConcurren
 		Store:     store.NewMemStore(),
 		Logger:    logger,
 	}
-	router := NewRouter(s, []string{"http://localhost:3000"}, intakePerMinute, intakePerHour, maxConcurrentLLM, generalPerMinute, generalPerHour)
+	router := NewRouter(s, Options{
+		AllowedOrigins:       []string{"http://localhost:3000"},
+		IntakeRatePerMinute:  intakePerMinute,
+		IntakeRatePerHour:    intakePerHour,
+		MaxConcurrentLLM:     maxConcurrentLLM,
+		GeneralRatePerMinute: generalPerMinute,
+		GeneralRatePerHour:   generalPerHour,
+	})
 
 	// Seed one case directly through the store so read/evidence
 	// endpoints have something real to hit, without spending the

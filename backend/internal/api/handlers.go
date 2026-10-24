@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -125,6 +127,30 @@ func (s *Server) handleIntake(w http.ResponseWriter, r *http.Request) {
 		// regardless of what went wrong: get treatment first, and here
 		// is the human fallback (the helpline) that doesn't depend on
 		// this system working at all.
+		//
+		// Three failure kinds get three different answers, because they
+		// mean different things to the person retrying:
+		//
+		//   503 — this deployment has no provider key. Retrying now is
+		//         pointless; the helpline is the real next step.
+		//   504 — the provider took too long. Worth retrying later.
+		//   502 — the provider failed. Retry, then use the helpline.
+		if errors.Is(err, extract.ErrNotConfigured) {
+			s.Logger.Error("intake unavailable: no provider key configured", "error", err)
+			writeError(w, http.StatusServiceUnavailable,
+				"the guided case analysis is not available on this server right now",
+				response.CareFirstText+" Call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working.",
+			)
+			return
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			s.Logger.Warn("extraction timed out", "error", err)
+			writeError(w, http.StatusGatewayTimeout,
+				"the analysis took too long and was stopped",
+				response.CareFirstText+" Please try once more, or call the PMJAY helpline directly at 14555 — they can help without needing this tool to be working.",
+			)
+			return
+		}
 		s.Logger.Error("extraction failed", "error", err)
 		writeError(w, http.StatusBadGateway,
 			"the system could not process this request right now",
@@ -154,16 +180,19 @@ func (s *Server) handleIntake(w http.ResponseWriter, r *http.Request) {
 		EvidencePrompt:       built.EvidencePrompt(),
 	}
 
+	resp := caseRecordToResponse(record)
 	if err := s.Store.Create(ctx, record); err != nil {
 		// The response was already computed correctly; a storage failure
 		// shouldn't mean the family gets nothing. Log it, serve the
-		// answer anyway, but flag that follow-up (evidence capture,
-		// re-fetching this case later) may not work.
-		s.Logger.Error("failed to persist case", "error", err, "case_id", record.ID)
+		// answer anyway, but mark it unpersisted so the UI does not
+		// promise follow-up (evidence capture, reopening, deletion) that
+		// cannot work.
+		s.Logger.Error("failed to persist case", "error", err, "case_id", shortCaseID(record.ID))
+		resp.Persisted = false
 	}
 
-	s.Logger.Info("case processed", "case_id", record.ID, "outcome", record.Outcome)
-	writeJSON(w, http.StatusCreated, caseRecordToResponse(record))
+	s.Logger.Info("case processed", "case_id", shortCaseID(record.ID), "outcome", record.Outcome)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // handleGetCase implements GET /api/v1/cases/{id}.
@@ -171,7 +200,7 @@ func (s *Server) handleGetCase(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	record, found, err := s.Store.Get(r.Context(), id)
 	if err != nil {
-		s.Logger.Error("store get failed", "error", err, "case_id", id)
+		s.Logger.Error("store get failed", "error", err, "case_id", shortCaseID(id))
 		writeError(w, http.StatusInternalServerError, "could not retrieve case", "")
 		return
 	}
@@ -180,6 +209,30 @@ func (s *Server) handleGetCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, caseRecordToResponse(record))
+}
+
+// handleDeleteCase implements DELETE /api/v1/cases/{id} — the family's
+// right to remove their own record. The ID is the only credential the
+// system has, so possession of it is treated as authority to delete. That
+// is the same trust model as GET, and it is why the ID is generated with
+// crypto/rand and kept out of logs (see RedactPath).
+//
+// Deletion is permanent. A soft delete would leave the description,
+// outcome, and evidence on disk, which defeats the point of offering it.
+func (s *Server) handleDeleteCase(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	err := s.Store.Delete(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "case not found", "")
+		return
+	}
+	if err != nil {
+		s.Logger.Error("store delete failed", "error", err, "case_id", shortCaseID(id))
+		writeError(w, http.StatusInternalServerError, "could not delete case", "")
+		return
+	}
+	s.Logger.Info("case deleted", "case_id", shortCaseID(id))
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleGetCaseDocument implements GET /api/v1/cases/{id}/document — the
@@ -203,7 +256,7 @@ func (s *Server) handleGetCaseDocument(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	record, found, err := s.Store.Get(r.Context(), id)
 	if err != nil {
-		s.Logger.Error("store get failed", "error", err, "case_id", id)
+		s.Logger.Error("store get failed", "error", err, "case_id", shortCaseID(id))
 		writeError(w, http.StatusInternalServerError, "could not retrieve case", "")
 		return
 	}
@@ -219,7 +272,7 @@ func (s *Server) handleGetCaseDocument(w http.ResponseWriter, r *http.Request) {
 		// generation bug that does start failing must degrade to a
 		// clear 500, never a silently truncated or corrupt PDF sent to
 		// a family mid-crisis.
-		s.Logger.Error("document generation failed", "error", err, "case_id", id)
+		s.Logger.Error("document generation failed", "error", err, "case_id", shortCaseID(id))
 		writeError(w, http.StatusInternalServerError, "could not generate document", "")
 		return
 	}
@@ -267,7 +320,7 @@ func (s *Server) handleAddEvidence(w http.ResponseWriter, r *http.Request) {
 
 	existing, found, err := s.Store.Get(r.Context(), id)
 	if err != nil {
-		s.Logger.Error("store get failed", "error", err, "case_id", id)
+		s.Logger.Error("store get failed", "error", err, "case_id", shortCaseID(id))
 		writeError(w, http.StatusInternalServerError, "could not save evidence", "")
 		return
 	}
@@ -293,7 +346,7 @@ func (s *Server) handleAddEvidence(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "case not found", "")
 			return
 		}
-		s.Logger.Error("failed to append evidence", "error", err, "case_id", id)
+		s.Logger.Error("failed to append evidence", "error", err, "case_id", shortCaseID(id))
 		writeError(w, http.StatusInternalServerError, "could not save evidence", "")
 		return
 	}
@@ -301,15 +354,151 @@ func (s *Server) handleAddEvidence(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, caseRecordToResponse(updated))
 }
 
+// handlePackages implements GET /api/v1/packages — a deterministic,
+// no-LLM search over the HBP reference data, used by the public package
+// search page.
+//
+// Query parameters:
+//
+//	q          free text, optional; empty lists everything
+//	specialty  exact specialty filter, optional
+//	limit      1-100, default 25
+//	offset     0-10000, default 0
+//
+// Rates are only ever returned for records marked Verified. The dataset
+// still carries placeholder figures on unverified rows because the
+// backend's own arithmetic tests need them; exposing those through a
+// public endpoint would turn a placeholder into a citation, which is the
+// exact failure this project exists to avoid. Unverified rows are
+// returned by name so a person can at least recognise the procedure.
+func (s *Server) handlePackages(w http.ResponseWriter, r *http.Request) {
+	const (
+		defaultLimit = 25
+		maxLimit     = 100
+		maxOffset    = 10000
+	)
+
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	specialty := strings.TrimSpace(r.URL.Query().Get("specialty"))
+
+	limit := defaultLimit
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n <= 0 || n > maxLimit {
+			writeError(w, http.StatusBadRequest, "limit must be an integer between 1 and 100", "")
+			return
+		}
+		limit = n
+	}
+
+	offset := 0
+	if raw := r.URL.Query().Get("offset"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > maxOffset {
+			writeError(w, http.StatusBadRequest, "offset must be an integer between 0 and 10000", "")
+			return
+		}
+		offset = n
+	}
+
+	matches := retrieval.Search(s.Dataset, query)
+	filtered := matches[:0]
+	for _, candidate := range matches {
+		if specialty != "" && !strings.EqualFold(candidate.Package.Specialty, specialty) {
+			continue
+		}
+		filtered = append(filtered, candidate)
+	}
+
+	total := len(filtered)
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+
+	results := make([]PackageSearchResult, 0, end-offset)
+	for _, candidate := range filtered[offset:end] {
+		results = append(results, packageToSearchResult(candidate.Package))
+	}
+
+	writeJSON(w, http.StatusOK, PackageSearchResponse{
+		Query:       query,
+		Specialty:   specialty,
+		Specialties: datasetSpecialties(s.Dataset),
+		Total:       total,
+		Count:       len(results),
+		Offset:      offset,
+		Results:     results,
+	})
+}
+
+// packageToSearchResult maps a package to the public search shape and
+// strips every rate and the placeholder code from an unverified record.
+// Keep this the only path from hbp.Package to the search API, so the
+// stripping cannot be forgotten in a future handler.
+func packageToSearchResult(p hbp.Package) PackageSearchResult {
+	out := PackageSearchResult{
+		PackageName:     p.PackageName,
+		Specialty:       p.Specialty,
+		RequiresPreauth: p.RequiresPreauth,
+		Verified:        p.Verified,
+	}
+	if !p.Verified {
+		return out
+	}
+	out.PackageCode = p.PackageCode
+	out.IndicativeRateINR = p.IndicativeRateINR
+	out.RateMaxINR = p.RateMaxINR
+	out.RateType = p.RateType
+	if p.PerDiemRates != nil {
+		out.PerDiemRates = &PerDiemRates{
+			RoutineWardINR: p.PerDiemRates.RoutineWardINR,
+			HDUINR:         p.PerDiemRates.HDUINR,
+			ICUNoVentINR:   p.PerDiemRates.ICUNoVentINR,
+			ICUVentINR:     p.PerDiemRates.ICUVentINR,
+		}
+	}
+	return out
+}
+
+func datasetSpecialties(ds *hbp.Dataset) []string {
+	seen := make(map[string]bool, len(ds.Packages))
+	out := make([]string, 0, 16)
+	for _, p := range ds.Packages {
+		if p.Specialty == "" || seen[p.Specialty] {
+			continue
+		}
+		seen[p.Specialty] = true
+		out = append(out, p.Specialty)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // handleHealth implements GET /api/v1/health — a cheap, dependency-free
 // liveness check (no LLM call, no store access) suitable for a load
 // balancer or uptime monitor to poll frequently without it costing
 // anything.
+//
+// extraction_ready is deliberately a separate field from status. "The
+// process is up" and "intake can actually work" are different facts, and
+// conflating them is how a deployment with a missing API key passes its
+// health check while every real request fails. status stays "ok" so a
+// liveness probe does not restart a healthy process over a configuration
+// problem that a restart cannot fix.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{
+	ready := true
+	if a, ok := s.Extractor.(extract.Availability); ok {
+		ready = a.Available()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
 		"status":            "ok",
-		"packages_loaded":   strconv.Itoa(len(s.Dataset.Packages)),
-		"exclusions_loaded": strconv.Itoa(len(s.Dataset.Exclusions)),
+		"packages_loaded":   len(s.Dataset.Packages),
+		"exclusions_loaded": len(s.Dataset.Exclusions),
+		"extraction_ready":  ready,
 	})
 }
 

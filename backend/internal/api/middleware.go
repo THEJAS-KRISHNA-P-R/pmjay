@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net"
 	"net/http"
@@ -29,11 +30,46 @@ func loggingMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 		next.ServeHTTP(sw, r)
 		logger.Info("request",
 			"method", r.Method,
-			"path", r.URL.Path,
+			"path", RedactPath(r.URL.Path),
 			"status", sw.status,
 			"duration_ms", time.Since(start).Milliseconds(),
 		)
 	})
+}
+
+// RedactPath removes case IDs from a request path before it is logged.
+//
+// A case ID is effectively a bearer capability: GET /api/v1/cases/{id} has
+// no other authentication, so anyone holding the ID can read the family's
+// description, outcome, and evidence. Logging the raw path would copy that
+// capability into every log sink, backup, and error tracker the deployment
+// uses. The route shape is enough for observability; the ID is not.
+func RedactPath(path string) string {
+	const prefix = "/api/v1/cases/"
+	if !strings.HasPrefix(path, prefix) {
+		return path
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	if rest == "" {
+		return path
+	}
+	segment, tail, found := strings.Cut(rest, "/")
+	if segment == "" {
+		return path
+	}
+	if !found {
+		return prefix + "{id}"
+	}
+	return prefix + "{id}/" + tail
+}
+
+// shortCaseID is the log-safe form of a case ID: enough to correlate two
+// lines in one incident, not enough to fetch the case. See RedactPath.
+func shortCaseID(id string) string {
+	if len(id) <= 8 {
+		return "…"
+	}
+	return id[:8] + "…"
 }
 
 type statusCapturingWriter struct {
@@ -44,6 +80,17 @@ type statusCapturingWriter struct {
 func (w *statusCapturingWriter) WriteHeader(status int) {
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
+}
+
+// Write makes an implicit 200 observable. A handler that writes a body
+// without calling WriteHeader never reaches the override above, so the
+// status-capturing and rate-limiting writers would both miss it. net/http
+// would still send 200 on the wire — the decorator is what was wrong.
+func (w *statusCapturingWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
@@ -62,8 +109,9 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if allowed[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Max-Age", "600")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -156,7 +204,6 @@ func (rl *rateLimiter) checkAndReserve(key string) (allowed bool, retryAfterSec 
 
 	return true, 0, remainingMinute, remainingHour
 }
-
 func (rl *rateLimiter) consume(key string) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -213,13 +260,6 @@ func (rl *rateLimiter) sweepLocked(now time.Time) {
 	}
 }
 
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 type rateLimitResponseWriter struct {
 	http.ResponseWriter
 	status        int
@@ -236,6 +276,16 @@ func (w *rateLimitResponseWriter) WriteHeader(status int) {
 		w.limiter.consume(w.key)
 	}
 	w.ResponseWriter.WriteHeader(status)
+}
+
+// Write is the implicit-200 path: a handler that writes a body without an
+// explicit WriteHeader must still consume a token, or the limiter would
+// silently never charge for exactly the handlers that forget.
+func (w *rateLimitResponseWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 func (w *rateLimitResponseWriter) Header() http.Header {
@@ -258,9 +308,9 @@ func max(a, b int) int {
 	return b
 }
 
-func rateLimitMiddleware(rl *rateLimiter, next http.Handler) http.Handler {
+func rateLimitMiddleware(rl *rateLimiter, trustProxyHeaders bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := clientIP(r)
+		key := clientIP(r, trustProxyHeaders)
 		allowed, retryAfter, remMin, remHour := rl.checkAndReserve(key)
 
 		w.Header().Set("X-RateLimit-Limit-Minute", strconv.Itoa(rl.perMinute))
@@ -290,10 +340,26 @@ func rateLimitMiddleware(rl *rateLimiter, next http.Handler) http.Handler {
 	})
 }
 
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		parts := strings.Split(fwd, ",")
-		return strings.TrimSpace(parts[len(parts)-1])
+// clientIP identifies the caller for rate limiting.
+//
+// X-Forwarded-For is only read when trustProxyHeaders is true. It is a
+// request header, not a fact: any client can set it to a new value on
+// every request and get a fresh token bucket, which would defeat the
+// intake limiter that exists to cap LLM spend. The rightmost entry is the
+// address appended by the nearest proxy; earlier entries are
+// caller-supplied, which is why the rightmost one is taken rather than
+// the leftmost.
+func clientIP(r *http.Request, trustProxyHeaders bool) string {
+	if trustProxyHeaders {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			parts := strings.Split(fwd, ",")
+			if last := strings.TrimSpace(parts[len(parts)-1]); last != "" {
+				return last
+			}
+		}
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -323,5 +389,50 @@ func llmConcurrencyMiddleware(sem *llmSemaphore, next http.Handler) http.Handler
 		sem.Acquire()
 		defer sem.Release()
 		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeadersMiddleware sets response headers that cost nothing and
+// close the obvious classes of browser-side abuse. The API returns JSON
+// and PDFs, never HTML, so the CSP can be maximally restrictive.
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// noStoreMiddleware keeps case data out of every cache between the server
+// and the family. A case response contains a health situation, a denial
+// narrative, and a complaint draft; it is addressed by an unguessable ID
+// but is not otherwise authenticated, so a shared or intermediary cache
+// holding it is a privacy failure, not a performance win. Health and
+// package search are harmless to cache, but the simplest correct rule is
+// one policy for the whole API.
+func noStoreMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Pragma", "no-cache") // HTTP/1.0 proxies
+		next.ServeHTTP(w, r)
+	})
+}
+
+// timeoutMiddleware bounds how long a request's context lives. The handler
+// is expected to turn context.DeadlineExceeded into its own domain-specific
+// error; this middleware deliberately does not write a response itself,
+// because doing so after the handler may already have written one is how
+// double-write bugs happen.
+func timeoutMiddleware(d time.Duration, next http.Handler) http.Handler {
+	if d <= 0 {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), d)
+		defer cancel()
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
