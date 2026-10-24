@@ -118,6 +118,36 @@ func TestValidate_EmptyPackageSourceNoteRejected(t *testing.T) {
 	}
 }
 
+func TestValidate_VerifiedPlaceholderCodeRejected(t *testing.T) {
+	// A verified record is shown to a family as a citation, and
+	// GET /api/v1/packages now returns package_code publicly. A SEED-
+	// identifier is a placeholder that exists in no government schedule,
+	// so "verified" plus a SEED- code is a false citation — exactly the
+	// failure this project exists to prevent. Two real records (MC011A,
+	// MG072A) shipped in that state until package search exposed codes;
+	// this check makes it fail at load rather than at the billing desk.
+	ds := validDataset()
+	ds.Packages[0].PackageCode = "SEED-TEST-001"
+	ds.Packages[0].Verified = true
+	if err := validate(ds); err == nil {
+		t.Error("expected validation error for a verified record carrying a placeholder SEED- code")
+	}
+}
+
+func TestValidate_UnverifiedPlaceholderCodeAllowed(t *testing.T) {
+	// The counterpart guarantee: placeholder codes are legitimate for
+	// records that were never checked against a schedule. The 15
+	// name-only records in the shipped dataset rely on this, and
+	// rejecting them would push maintainers toward inventing a code
+	// rather than admitting the gap.
+	ds := validDataset()
+	ds.Packages[0].PackageCode = "SEED-TEST-001"
+	ds.Packages[0].Verified = false
+	if err := validate(ds); err != nil {
+		t.Errorf("expected an unverified placeholder code to be allowed, got: %v", err)
+	}
+}
+
 func TestValidate_MissingUnspecifiedPackageRejected(t *testing.T) {
 	// internal/retrieval.ensureUnspecifiedIncluded and
 	// internal/tiering.decidePackage both assume a package with code

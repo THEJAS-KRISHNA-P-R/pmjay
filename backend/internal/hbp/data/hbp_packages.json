@@ -51,7 +51,7 @@
     "verified": false
   },
   {
-    "package_code": "SEED-CARD-001",
+    "package_code": "MC011A",
     "package_name": "Percutaneous Transluminal Coronary Angioplasty (PTCA) with Single Bare-Metal Stent, Inclusive of Diagnostic Angiogram",
     "specialty": "Cardiology",
     "indicative_rate_inr": 49300,
@@ -205,7 +205,7 @@
     "verified": false
   },
   {
-    "package_code": "SEED-NEPH-001",
+    "package_code": "MG072A",
     "package_name": "Haemodialysis, Per Session",
     "specialty": "General Medicine",
     "indicative_rate_inr": 1500,

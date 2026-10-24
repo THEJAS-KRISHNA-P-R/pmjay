@@ -1,6 +1,7 @@
 package retrieval
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmjay-advocate/backend/internal/hbp"
@@ -32,7 +33,7 @@ func TestRetrieve_CardiacStentMatches(t *testing.T) {
 	candidates := Retrieve(ds, "father collapsed, doctors say heart, need urgent stent, hospital says card wont cover the stent")
 	found := false
 	for _, c := range candidates[:min(5, len(candidates))] {
-		if c.Package.PackageCode == "SEED-CARD-001" {
+		if c.Package.PackageCode == "MC011A" {
 			found = true
 		}
 	}
@@ -164,4 +165,64 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func TestSearch_PartialTokenFindsPackage(t *testing.T) {
+	ds, err := hbp.Load()
+	if err != nil {
+		t.Fatalf("load dataset: %v", err)
+	}
+	results := Search(ds, "dialys")
+	if len(results) == 0 {
+		t.Fatal("expected 'dialys' to match at least one dialysis package")
+	}
+	found := false
+	for _, r := range results {
+		if strings.Contains(strings.ToLower(r.Package.PackageName), "dialysis") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a dialysis package in the results, got %+v", results[:min(3, len(results))])
+	}
+}
+
+func TestSearch_EmptyQueryReturnsWholeDataset(t *testing.T) {
+	ds, err := hbp.Load()
+	if err != nil {
+		t.Fatalf("load dataset: %v", err)
+	}
+	results := Search(ds, "   ")
+	if len(results) != len(ds.Packages) {
+		t.Errorf("expected all %d packages for an empty query, got %d", len(ds.Packages), len(results))
+	}
+}
+
+func TestSearch_UnmatchedQueryReturnsNothing(t *testing.T) {
+	ds, err := hbp.Load()
+	if err != nil {
+		t.Fatalf("load dataset: %v", err)
+	}
+	if results := Search(ds, "zzzznotarealprocedure"); len(results) != 0 {
+		t.Errorf("expected no results for an unmatched query, got %d", len(results))
+	}
+}
+
+func TestSearch_VerifiedRecordsRankAheadOnEqualScore(t *testing.T) {
+	ds, err := hbp.Load()
+	if err != nil {
+		t.Fatalf("load dataset: %v", err)
+	}
+	results := Search(ds, "")
+	seenUnverified := false
+	for _, r := range results {
+		if !r.Package.Verified {
+			seenUnverified = true
+			continue
+		}
+		if seenUnverified {
+			t.Fatal("expected every verified record to sort before unverified records when scores are equal")
+		}
+	}
 }

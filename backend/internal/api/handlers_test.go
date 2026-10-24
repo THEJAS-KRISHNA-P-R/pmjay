@@ -29,7 +29,14 @@ func testServer(t *testing.T, fake *extract.FakeClient) (*Server, http.Handler) 
 		Store:     store.NewMemStore(),
 		Logger:    logger,
 	}
-	router := NewRouter(s, []string{"http://localhost:3000"}, 1000, 1000, 1000, 1000, 1000) // high limits; rate limiting tested separately
+	router := NewRouter(s, Options{ // high limits; rate limiting tested separately
+		AllowedOrigins:       []string{"http://localhost:3000"},
+		IntakeRatePerMinute:  1000,
+		IntakeRatePerHour:    1000,
+		MaxConcurrentLLM:     1000,
+		GeneralRatePerMinute: 1000,
+		GeneralRatePerHour:   1000,
+	})
 	return s, router
 }
 
@@ -98,7 +105,7 @@ func TestHandleIntake_AmberCase_PendingPreauth_FullPipeline(t *testing.T) {
 	fake := extract.NewFakeClient()
 	fake.Register(desc, extract.Result{
 		ExtractedSituationSummary: "Procedure already performed; hospital citing an uncleared preauth status.",
-		Candidates:                []extract.CandidateMatch{{PackageCode: "SEED-CARD-001", ConfidenceP: 80, Reasoning: "plausible"}},
+		Candidates:                []extract.CandidateMatch{{PackageCode: "MC011A", ConfidenceP: 80, Reasoning: "plausible"}},
 		Pending:                   extract.SignalPendingLikely,
 	})
 	_, router := testServer(t, fake)

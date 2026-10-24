@@ -438,7 +438,7 @@ func TestBuild_Handoff_DistressReasonGetsItsOwnSpecificMessage(t *testing.T) {
 
 func TestBuild_Amber_PendingReason_AsksTheRightQuestion(t *testing.T) {
 	ds := testDS(t)
-	pkg := pkgOrFatal(t, ds, "SEED-CARD-001")
+	pkg := pkgOrFatal(t, ds, "MC011A")
 	r := Build(tiering.Decision{
 		Outcome: tiering.OutcomeAmber, MatchedPackage: &pkg,
 		AmberReasons: []tiering.AmberReason{tiering.ReasonPendingPreauth}, ExtractedSituationSummary: "test",

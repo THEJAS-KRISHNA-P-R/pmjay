@@ -12,16 +12,20 @@ REAL_SOURCE = ("Package code, name, specialty group, and total package price ver
 data = json.load(open(PATH))
 
 # ---------------------------------------------------------------------
-# Correct two existing placeholders in place. Package codes are left
-# untouched deliberately -- several tests reference "SEED-CARD-001" by
-# exact string as a lookup key, and PackageCode is never shown to a
-# family (only PackageName/Specialty reach response text -- confirmed
-# by grepping internal/response), so updating the DATA behind a stable
-# identifier is safe and is the correct fix, not a rename.
+# Correct two existing placeholders to their real, verified records.
+# These two used to keep their SEED- identifiers deliberately, because
+# several tests referenced them by exact string and PackageCode was not
+# shown to a family. That second premise stopped being true when
+# GET /api/v1/packages began returning package_code to the public search
+# page: a verified record must not advertise a placeholder code. Both the
+# data and the tests that referenced the old identifier were updated in
+# the same change. The lookups below accept either name so this script
+# stays re-runnable against an already-transformed file.
 # ---------------------------------------------------------------------
 by_code = {p["package_code"]: p for p in data}
 
-card = by_code["SEED-CARD-001"]
+card = by_code.get("SEED-CARD-001") or by_code["MC011A"]
+card["package_code"] = "MC011A"
 card["package_name"] = ("Percutaneous Transluminal Coronary Angioplasty (PTCA) with "
                          "Single Bare-Metal Stent, Inclusive of Diagnostic Angiogram")
 card["indicative_rate_inr"] = 49300  # real MC011A: procedure 40,600 + 1 bare-metal stent 8,700
@@ -34,7 +38,8 @@ card["confidence_notes"] = (card["confidence_notes"] + " This figure is the base
 card["source_note"] = REAL_SOURCE + " Real government package code for this exact procedure: MC011A."
 card["verified"] = True
 
-neph = by_code["SEED-NEPH-001"]
+neph = by_code.get("SEED-NEPH-001") or by_code["MG072A"]
+neph["package_code"] = "MG072A"
 neph["specialty"] = "General Medicine"  # correction: real HBP groups haemodialysis under
                                           # General Medicine (MG072), not a separate
                                           # Nephrology empanelment category -- this matters

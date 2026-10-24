@@ -86,7 +86,7 @@ func TestDecide_MechanicalArm_CardiacGreenWithPartialCoverageLanguage(t *testing
 	result := extract.Result{
 		ExtractedSituationSummary: "Urgent cardiac stent; hospital disputes coverage of a room charge, not clearly the stent procedure itself.",
 		Candidates: []extract.CandidateMatch{
-			{PackageCode: "SEED-CARD-001", ConfidenceP: 88, Reasoning: "clear stent/PTCA match"},
+			{PackageCode: "MC011A", ConfidenceP: 88, Reasoning: "clear stent/PTCA match"},
 		},
 		Pending: extract.SignalNotApplicable,
 	}
@@ -165,7 +165,7 @@ func TestDecide_AmbiguousArm_PendingPreauthMirrorsWorkedExample(t *testing.T) {
 	result := extract.Result{
 		ExtractedSituationSummary: "Procedure already performed; hospital citing an uncleared insurance/preauth status as the reason for demanding payment.",
 		Candidates: []extract.CandidateMatch{
-			{PackageCode: "SEED-CARD-001", ConfidenceP: 80, Reasoning: "plausible cardiac procedure given prior conversation context"},
+			{PackageCode: "MC011A", ConfidenceP: 80, Reasoning: "plausible cardiac procedure given prior conversation context"},
 		},
 		Pending: extract.SignalPendingLikely,
 	}
@@ -182,7 +182,7 @@ func TestDecide_AmbiguousArm_CloseCandidatesForceAmberRegardlessOfTopScore(t *te
 	result := extract.Result{
 		ExtractedSituationSummary: "Ambiguous between two plausible cardiac packages.",
 		Candidates: []extract.CandidateMatch{
-			{PackageCode: "SEED-CARD-001", ConfidenceP: 82, Reasoning: "stent"},
+			{PackageCode: "MC011A", ConfidenceP: 82, Reasoning: "stent"},
 			{PackageCode: "SEED-CARD-002", ConfidenceP: 74, Reasoning: "bypass — genuinely plausible too"},
 		},
 		Pending: extract.SignalNotApplicable,

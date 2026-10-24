@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 //go:embed data/hbp_packages.json data/exclusions.json
@@ -90,6 +91,15 @@ func validate(ds *Dataset) error {
 		}
 		if p.SourceNote == "" {
 			return fmt.Errorf("package %q: empty source_note (every record must be traceable — Appendix F)", p.PackageCode)
+		}
+		// A verified record is a citation, so its identifier must be the
+		// real HBP code. A SEED- prefix means the record was a
+		// placeholder; flipping verified without replacing that code
+		// produces a publicly displayed "verified" badge attached to a
+		// code that does not exist in any government schedule. That
+		// happened to two records before package search exposed codes.
+		if p.Verified && strings.HasPrefix(p.PackageCode, "SEED-") {
+			return fmt.Errorf("package %q is verified but still carries a placeholder SEED- code; use the real HBP code", p.PackageCode)
 		}
 
 		switch p.RateType {
