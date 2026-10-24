@@ -5,7 +5,8 @@ import { SafetyPledge } from "../components/landing/SafetyPledge";
 import { IconHeart, IconLock, IconScale } from "../components/icons";
 
 export const metadata: Metadata = {
-  title: "About — PMJAY Advocate",
+  title: "About",
+  alternates: { canonical: "/about" },
   description:
     "Why PMJAY Advocate was built, how it operates as a free public-interest tool, and our core principles of privacy and safety.",
 };
@@ -49,10 +50,11 @@ export default function AboutPage() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.05)]">
                 <IconLock className="h-4 w-4" />
               </div>
-              <h3 className="font-bold text-sand-900">Zero Personal Data Required</h3>
+              <h3 className="font-bold text-sand-900">No Identity Required</h3>
               <p className="text-xs sm:text-sm text-sand-600 leading-relaxed font-medium">
-                No phone number, Aadhaar number, or account creation is required to use this tool. Case details
-                are held under an anonymous ID and are not tied to your identity.
+                No phone number, Aadhaar number, or account creation is required. A case is held under a
+                random ID, deleted automatically after 30 days of inactivity, and can be deleted sooner
+                from the case page.
               </p>
             </div>
 
@@ -60,10 +62,11 @@ export default function AboutPage() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sand-100 border border-sand-200/60 text-sand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.9),0_1px_3px_rgba(42,38,33,0.05)]">
                 <IconScale className="h-4 w-4" />
               </div>
-              <h3 className="font-bold text-sand-900">Grounded in Real Rates</h3>
+              <h3 className="font-bold text-sand-900">Grounded in Checked Rates</h3>
               <p className="text-xs sm:text-sm text-sand-600 leading-relaxed font-medium">
-                All package checks are cross-referenced against the official National Health Authority Health
-                Benefit Package (HBP) index. We never invent coverage rules or generate unfounded disputes.
+                Package checks use a reference index built from published National Health Authority HBP
+                schedules: 315 procedure names, 300 with a verified code and rate. Where a rate has not
+                been checked, no rupee figure is shown, and no dispute is invented.
               </p>
             </div>
           </div>

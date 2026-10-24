@@ -4,7 +4,8 @@ import { Footer } from "../components/landing/Footer";
 import { GuideReader } from "./GuideReader";
 
 export const metadata: Metadata = {
-  title: "Your Rights — PMJAY Advocate",
+  title: "Your Rights",
+  alternates: { canonical: "/guide" },
   description:
     "A plain-language guide to what PMJAY covers, what hospitals aren't allowed to do, and what to do if your coverage is denied.",
 };

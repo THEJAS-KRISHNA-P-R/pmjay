@@ -276,8 +276,11 @@ export default function SettingsPage() {
             <div className="card p-6 sm:p-7 space-y-4 shadow-sm">
               <SectionHeading Icon={IconLock} title="Privacy &amp; data" />
               <p className="text-xs sm:text-sm text-sand-600 leading-relaxed">
-                Your case{caseCount === 1 ? "" : "s"} ({caseCount} tracked on this device) and saved details are
-                stored only in this browser&rsquo;s local storage.
+                Your case{caseCount === 1 ? "" : "s"} ({caseCount} tracked on this device) and saved
+                details are stored in this browser. The cases themselves also live on our server so
+                you can reopen them, and are deleted automatically after 30 days of inactivity.
+                Clearing the list here does not delete the server record — open a case and use
+                <strong> Delete this case</strong> for that.
               </p>
 
               <div className="flex flex-col gap-2.5 pt-1">

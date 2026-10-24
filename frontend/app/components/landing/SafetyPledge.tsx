@@ -9,8 +9,8 @@ export function SafetyPledge() {
       Icon: IconShieldCheck,
     },
     {
-      title: "Zero Personal Data Exploitation",
-      desc: "No phone numbers, Aadhaar numbers, or logins required to check coverage. Your clinical queries stay private.",
+      title: "No Identity Required",
+      desc: "No phone number, Aadhaar number, or login to check coverage. What you describe is processed to answer you, stored so you can return, and deleted after 30 days unless you delete it first.",
       Icon: IconLock,
     },
     {
@@ -31,7 +31,7 @@ export function SafetyPledge() {
             Safety &amp; Ethical Commitment
           </div>
           <h2 id="safety-pledge-title" className="font-display text-2xl sm:text-3xl font-semibold tracking-tight-display text-white">
-            Our Public-Interest Guarantee
+            Our Public-Interest Commitments
           </h2>
           <p className="text-sm sm:text-base text-ink-100/85 leading-relaxed font-medium">
             Standing at a billing desk when a loved one is unwell is distressing. We ensure you get calm, factual answers without alarmism.

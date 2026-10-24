@@ -124,8 +124,8 @@ export function GuideReader() {
                 </p>
                 <p className="text-sm sm:text-base leading-relaxed text-sand-700 font-medium">
                   Each package has an indicative rate and pre-authorisation criteria set by the National Health Authority (NHA).
-                  PMJAY Advocate cross-checks your procedure against the 315-package index to verify whether what the
-                  hospital is billing for is covered.
+                  PMJAY Advocate cross-checks your procedure against 315 procedure names, 300 of which carry a verified code
+                  and rate, to see whether what the hospital is billing for looks like a covered package.
                 </p>
               </div>
             )}
@@ -133,17 +133,17 @@ export function GuideReader() {
             {activeId === "your-rights" && (
               <div className="space-y-4">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-                  Guaranteed Rights
+                  Your core rights
                 </span>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-sand-900">
-                  Your core rights at an empanelled hospital
+                  What you can insist on at an empanelled hospital
                 </h2>
                 <ul className="space-y-3.5 pt-2">
                   {[
-                    "100% cashless inpatient treatment for covered procedures under your card's package schedule (zero upfront cash deposit).",
-                    "Dedicated Ayushman Mitra / PMJAY helpdesk at every empanelled hospital to verify beneficiary eligibility.",
+                    "Cashless inpatient treatment for a covered procedure under your card's package schedule, without a cash deposit for the package itself.",
+                    "A dedicated Ayushman Mitra / PMJAY helpdesk at empanelled hospitals to verify beneficiary eligibility.",
                     "Emergency care cannot be delayed or refused while pre-authorisation or server verification is pending.",
-                    "You are legally entitled to a written, specific reason if any procedure or claim is denied (not just a verbal refusal).",
+                    "You can ask for a written, specific reason if a procedure or claim is denied, not just a verbal refusal.",
                   ].map((point, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm sm:text-base leading-relaxed text-sand-700 font-medium">
                       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 mt-0.5">
@@ -266,7 +266,7 @@ export function GuideReader() {
                 <p className="text-sm sm:text-base leading-relaxed text-sand-700 font-medium">
                   For situations beyond straightforward billing disputes (illegal detention of a patient or documents,
                   repeated refusal to give written reasons, or outright extortion), NALSA (National Legal Services Authority)
-                  provides 100% free legal counsel.
+                  provides free legal aid.
                 </p>
                 <div className="pt-2">
                   <a

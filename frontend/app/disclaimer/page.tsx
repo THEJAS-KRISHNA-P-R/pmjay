@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/landing/Footer";
-import { IconAlertTriangle, IconShieldCheck, IconPhone, IconCheck } from "../components/icons";
-import Link from "next/link";
+import { IconAlertTriangle } from "../components/icons";
 
 export const metadata: Metadata = {
-  title: "Legal & Medical Disclaimer — PMJAY Advocate",
+  title: "Legal & Medical Disclaimer",
+  alternates: { canonical: "/disclaimer" },
   description:
     "Important legal and medical disclaimers regarding the use of PMJAY Advocate. This is an informational tool and does not provide formal legal or medical advice.",
 };

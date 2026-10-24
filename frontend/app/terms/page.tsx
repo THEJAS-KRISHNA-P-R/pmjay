@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Header } from "../components/Header";
 import { Footer } from "../components/landing/Footer";
-import { IconShieldCheck, IconAlertTriangle, IconPhone } from "../components/icons";
-import Link from "next/link";
+import { IconAlertTriangle } from "../components/icons";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — PMJAY Advocate",
+  title: "Terms of Service",
+  alternates: { canonical: "/terms" },
   description:
     "Terms and conditions for using PMJAY Advocate, including our Care-First Emergency Medical Priority rule and limitation of liability.",
 };

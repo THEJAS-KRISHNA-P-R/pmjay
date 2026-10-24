@@ -7,7 +7,8 @@ import { ScenarioGrid } from "../components/landing/ScenarioGrid";
 import { IconScale, IconClipboardList, IconMessageText } from "../components/icons";
 
 export const metadata: Metadata = {
-  title: "How It Works — PMJAY Advocate",
+  title: "How It Works",
+  alternates: { canonical: "/how-it-works" },
   description:
     "How PMJAY Advocate checks a hospital's coverage denial against the official Health Benefit Package index and decides what to do next.",
 };
@@ -63,7 +64,9 @@ export default function HowItWorksPage() {
                 <h3 className="font-bold text-sm sm:text-base text-sand-900">2. NHA Index Match</h3>
               </div>
               <p className="text-xs sm:text-sm text-sand-600 leading-relaxed font-medium">
-                Clinical facts are cross-referenced against the official 315 PMJAY package index and exclusion criteria in real time.
+                Clinical facts are cross-referenced against the 315-name package index and the
+                confirmed exclusion list. Only 300 of those names carry a verified rate; the rest
+                are recognised by name and flagged as needing confirmation.
               </p>
             </div>
 
@@ -75,7 +78,8 @@ export default function HowItWorksPage() {
                 <h3 className="font-bold text-sm sm:text-base text-sand-900">3. Deterministic Rules</h3>
               </div>
               <p className="text-xs sm:text-sm text-sand-600 leading-relaxed font-medium">
-                Outcomes are decided by strict, deterministic Go logic, guaranteeing the same facts always produce the exact same verdict.
+                The tier decision is made by fixed rules in plain Go, not by the model. The same
+                matched facts produce the same outcome every time.
               </p>
             </div>
           </div>

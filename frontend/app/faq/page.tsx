@@ -4,7 +4,8 @@ import { Footer } from "../components/landing/Footer";
 import { FaqSection } from "../components/landing/FaqSection";
 
 export const metadata: Metadata = {
-  title: "Frequently Asked Questions — PMJAY Advocate",
+  title: "Frequently Asked Questions",
+  alternates: { canonical: "/faq" },
   description:
     "Common questions about PMJAY coverage, point-of-denial disputes, hospital obligations, and how PMJAY Advocate works.",
 };
