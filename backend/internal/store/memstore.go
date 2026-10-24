@@ -60,6 +60,29 @@ func (m *MemStore) AppendEvidence(_ context.Context, id string, e EvidenceEntry)
 	return c, nil
 }
 
+func (m *MemStore) Delete(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, exists := m.cases[id]; !exists {
+		return fmt.Errorf("store: cannot delete case %q: %w", id, ErrNotFound)
+	}
+	delete(m.cases, id)
+	return nil
+}
+
+func (m *MemStore) PurgeBefore(_ context.Context, cutoff time.Time) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	removed := 0
+	for id, c := range m.cases {
+		if c.UpdatedAt.Before(cutoff) {
+			delete(m.cases, id)
+			removed++
+		}
+	}
+	return removed, nil
+}
+
 // snapshot returns a copy of every case currently held, used by FileStore
 // to serialize the full store to disk. Not part of the Store interface —
 // callers needing every case are a persistence concern, not an API

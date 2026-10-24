@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // FileStore is a durable Store backed by a single JSON file on disk. All
@@ -85,6 +86,29 @@ func (fs *FileStore) AppendEvidence(ctx context.Context, id string, e EvidenceEn
 		return CaseRecord{}, err
 	}
 	return updated, nil
+}
+
+func (fs *FileStore) Delete(ctx context.Context, id string) error {
+	if err := fs.mem.Delete(ctx, id); err != nil {
+		return err
+	}
+	return fs.flush()
+}
+
+func (fs *FileStore) PurgeBefore(ctx context.Context, cutoff time.Time) (int, error) {
+	removed, err := fs.mem.PurgeBefore(ctx, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	if removed == 0 {
+		// Avoid rewriting the whole file for a no-op sweep. The ticker
+		// runs hourly, so on a quiet instance most sweeps land here.
+		return 0, nil
+	}
+	if err := fs.flush(); err != nil {
+		return 0, err
+	}
+	return removed, nil
 }
 
 // flush serializes the full in-memory snapshot to disk atomically: write

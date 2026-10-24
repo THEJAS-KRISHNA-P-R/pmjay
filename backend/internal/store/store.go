@@ -86,4 +86,17 @@ type Store interface {
 	// AppendEvidence adds one evidence entry to an existing case and
 	// returns the updated record, or an error if the case doesn't exist.
 	AppendEvidence(ctx context.Context, id string, e EvidenceEntry) (CaseRecord, error)
+
+	// Delete removes a case permanently. Deleting a case that does not
+	// exist returns ErrNotFound, so a caller can tell a real deletion
+	// from a typo without a separate read. This is the right-to-erasure
+	// path: a family can remove their own record, and there is no soft
+	// delete to leave a copy behind.
+	Delete(ctx context.Context, id string) error
+
+	// PurgeBefore deletes every case whose UpdatedAt is before cutoff and
+	// returns how many were removed. Used by the default retention policy
+	// so a case does not live on disk forever merely because nobody
+	// clicked delete.
+	PurgeBefore(ctx context.Context, cutoff time.Time) (int, error)
 }

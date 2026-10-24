@@ -171,3 +171,57 @@ func TestMemStore_ConcurrentAccessIsSafe(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestMemStore_DeleteRemovesRecord(t *testing.T) {
+	s := NewMemStore()
+	ctx := context.Background()
+	if err := s.Create(ctx, sampleCase("to-delete")); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := s.Delete(ctx, "to-delete"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, found, err := s.Get(ctx, "to-delete"); err != nil {
+		t.Fatalf("Get: %v", err)
+	} else if found {
+		t.Fatal("expected the case to be gone after Delete")
+	}
+}
+
+func TestMemStore_DeleteMissingReturnsErrNotFound(t *testing.T) {
+	s := NewMemStore()
+	err := s.Delete(context.Background(), "never-existed")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestMemStore_PurgeBeforeRemovesOnlyExpiredCases(t *testing.T) {
+	s := NewMemStore()
+	ctx := context.Background()
+
+	old := sampleCase("old")
+	old.UpdatedAt = time.Now().Add(-48 * time.Hour)
+	fresh := sampleCase("fresh")
+	fresh.UpdatedAt = time.Now()
+
+	for _, c := range []CaseRecord{old, fresh} {
+		if err := s.Create(ctx, c); err != nil {
+			t.Fatalf("Create(%s): %v", c.ID, err)
+		}
+	}
+
+	removed, err := s.PurgeBefore(ctx, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("PurgeBefore: %v", err)
+	}
+	if removed != 1 {
+		t.Fatalf("expected 1 record purged, got %d", removed)
+	}
+	if _, found, _ := s.Get(ctx, "old"); found {
+		t.Error("expected the expired case to be purged")
+	}
+	if _, found, _ := s.Get(ctx, "fresh"); !found {
+		t.Error("expected the fresh case to survive")
+	}
+}

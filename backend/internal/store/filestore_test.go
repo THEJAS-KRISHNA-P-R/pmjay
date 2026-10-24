@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestFileStore_CreateAndReload_SurvivesRestart(t *testing.T) {
@@ -145,4 +146,67 @@ func TestFileStore_SatisfiesStoreInterface(t *testing.T) {
 		t.Fatalf("NewFileStore failed: %v", err)
 	}
 	var _ Store = fs // compile-time check
+}
+
+func TestFileStore_DeletePersistsAcrossReload(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cases.json")
+	fs, err := NewFileStore(path)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	ctx := context.Background()
+	if err := fs.Create(ctx, sampleCase("keep")); err != nil {
+		t.Fatalf("Create(keep): %v", err)
+	}
+	if err := fs.Create(ctx, sampleCase("remove")); err != nil {
+		t.Fatalf("Create(remove): %v", err)
+	}
+	if err := fs.Delete(ctx, "remove"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	reopened, err := NewFileStore(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	if _, found, _ := reopened.Get(ctx, "remove"); found {
+		t.Error("deleted case came back after reload; Delete did not reach disk")
+	}
+	if _, found, _ := reopened.Get(ctx, "keep"); !found {
+		t.Error("unrelated case was lost during delete flush")
+	}
+}
+
+func TestFileStore_PurgeBeforePersistsAcrossReload(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cases.json")
+	fs, err := NewFileStore(path)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	ctx := context.Background()
+
+	old := sampleCase("old")
+	old.UpdatedAt = time.Now().Add(-72 * time.Hour)
+	if err := fs.Create(ctx, old); err != nil {
+		t.Fatalf("Create(old): %v", err)
+	}
+	if err := fs.Create(ctx, sampleCase("fresh")); err != nil {
+		t.Fatalf("Create(fresh): %v", err)
+	}
+
+	removed, err := fs.PurgeBefore(ctx, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("PurgeBefore: %v", err)
+	}
+	if removed != 1 {
+		t.Fatalf("expected 1 record purged, got %d", removed)
+	}
+
+	reopened, err := NewFileStore(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	if _, found, _ := reopened.Get(ctx, "old"); found {
+		t.Error("purged case came back after reload; PurgeBefore did not reach disk")
+	}
 }
